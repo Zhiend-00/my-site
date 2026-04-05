@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "moduleResolution": "bundler",  // ← исправлено
+    "types": ["vite/client"],
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],  // ← упрощено
+  "exclude": ["node_modules", "dist", "**/*.test.js"],
+  "jsxImportSource": "vue"
+}
