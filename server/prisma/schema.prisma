@@ -1,0 +1,185 @@
+// server/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               BigInt             @id @default(autoincrement())
+  username         String             @unique
+  email            String             @unique
+  password         String
+  avatar           String?            @default("/uploads/avatars/default.png")
+  role             String             @default("user")
+  emailVerified    Boolean            @default(false)
+  createdAt        DateTime           @default(now())    @map("created_at")
+  updatedAt        DateTime           @updatedAt         @map("updated_at")
+  
+  favorites        Manga[]            @relation("UserFavorites")
+  readingHistory   ReadingProgress[] 
+  userMangaStatus  UserMangaStatus[]
+  forumTopics      ForumTopic[]
+  forumPosts       ForumPost[]
+  feedbacks        Feedback[]
+
+  @@map("users")
+}
+
+model Manga {
+  id               BigInt             @id @default(autoincrement())
+  title            String
+  alternativeTitles String[]          @map("alternative_titles")
+  description      String
+  coverImage       String             @map("cover_image")
+  author           String?
+  artist           String?
+  status           String             @default("ongoing")
+  year             Int?
+  genres           String[]
+  rating           Float              @default(0)
+  views            BigInt             @default(0)
+  chaptersCount    Int                @default(0)         @map("chapters_count")
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  chapters         Chapter[]
+  favorites        User[]             @relation("UserFavorites")
+  userStatuses     UserMangaStatus[]
+  readingProgress  ReadingProgress[]
+
+  @@map("manga")
+}
+
+model Chapter {
+  id               Float              @id // оставляем Float для совместимости со старыми ID
+  mangaId          BigInt             @map("manga_id")
+  chapterNumber    Int                @map("chapter_number")
+  title            String?
+  pagesCount       Int                @default(0)         @map("pages_count")
+  views            Int                @default(0)
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  manga            Manga              @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  pages            Page[]
+  readingProgress  ReadingProgress[]
+
+  @@unique([mangaId, chapterNumber])
+  @@map("chapters")
+}
+
+model Page {
+  id               BigInt             @id @default(autoincrement())
+  chapterId        Float              @map("chapter_id")
+  pageNumber       Int                @map("page_number")
+  imageUrl         String             @map("image_url")
+
+  chapter          Chapter            @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, pageNumber])
+  @@map("pages")
+}
+
+model ReadingProgress {
+  id               BigInt             @id @default(autoincrement())
+  userId           BigInt             @map("user_id")
+  mangaId          BigInt             @map("manga_id")
+  chapterId        Float              @map("chapter_id")
+  pageNumber       Int                @default(1)         @map("page_number")
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga            Manga              @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  chapter          Chapter            @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mangaId])
+  @@map("reading_progress")
+}
+
+model UserMangaStatus {
+  id               BigInt             @id @default(autoincrement())
+  userId           BigInt             @map("user_id")
+  mangaId          BigInt             @map("manga_id")
+  status           String
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga            Manga              @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mangaId])
+  @@map("user_manga_status")
+}
+
+model ForumCategory {
+  id               BigInt             @id @default(autoincrement())
+  name             String
+  description      String?
+  slug             String             @unique
+  topicsCount      Int                @default(0)         @map("topics_count")
+  postsCount       Int                @default(0)         @map("posts_count")
+  icon             String?            @default("📁")
+  order            Int                @default(1)
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  topics           ForumTopic[]
+
+  @@map("forum_categories")
+}
+
+model ForumTopic {
+  id               BigInt             @id @default(autoincrement())
+  categoryId       BigInt             @map("category_id")
+  title            String
+  content          String
+  authorId         BigInt             @map("author_id")
+  views            Int                @default(0)
+  postsCount       Int                @default(0)         @map("posts_count")
+  isPinned         Boolean            @default(false)     @map("is_pinned")
+  isLocked         Boolean            @default(false)     @map("is_locked")
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  category         ForumCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author           User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  posts            ForumPost[]
+
+  @@map("forum_topics")
+}
+
+model ForumPost {
+  id               BigInt             @id @default(autoincrement())
+  topicId          BigInt             @map("topic_id")
+  content          String
+  authorId         BigInt             @map("author_id")
+  likes            Int                @default(0)
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+
+  topic            ForumTopic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author           User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("forum_posts")
+}
+
+model Feedback {
+  id               BigInt             @id @default(autoincrement())
+  name             String
+  email            String
+  message          String
+  status           String             @default("new")
+  ip               String?
+  createdAt        DateTime           @default(now())     @map("created_at")
+  updatedAt        DateTime           @updatedAt          @map("updated_at")
+  userId           BigInt?            @map("user_id")
+
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("feedback")
+}

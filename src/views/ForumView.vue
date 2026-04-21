@@ -345,7 +345,7 @@ const onSearchInput = () => {
 
 const handleCreateTopic = async (data) => {
   try {
-    await forumAPI.createTopic(data);
+    await forumAPI.createTopic({ ...data, categoryId: selectedCategoryId.value });
     showNewTopicModal.value = false;
     viewMode.value = 'topics';
     await loadTopics();

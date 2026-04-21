@@ -241,14 +241,11 @@ const onWebtoonPageLoad = (index) => {
 // Загрузка следующей главы
 const loadNextChapter = async () => {
   if (!chapter.value) return;
-  
   try {
-    const currentMangaId = chapter.value.manga_id;
-    const currentChapterNum = chapter.value.chapter_number;
-    
-    const chapters = await mangaAPI.getChapters(currentMangaId);
-    const nextChap = chapters.find(ch => ch.chapter_number === currentChapterNum + 1);
-    
+    const mangaId = chapter.value.mangaId || chapter.value.manga_id;
+    const currentChapterNum = chapter.value.chapterNumber || chapter.value.chapter_number;
+    const chapters = await mangaAPI.getChapters(mangaId);
+    const nextChap = chapters.find(ch => (ch.chapterNumber || ch.chapter_number) === currentChapterNum + 1);
     nextChapter.value = nextChap || null;
   } catch (err) {
     console.error('Ошибка загрузки следующей главы:', err);
@@ -437,9 +434,9 @@ const handleKeydown = (event) => {
 // Загрузка прогресса
 const loadProgress = async () => {
   if (!authStore.isLoggedIn || !chapter.value) return;
-  
   try {
-    const progress = await progressAPI.get(chapter.value.manga_id, authStore.user.id);
+    const mangaId = chapter.value.mangaId || chapter.value.manga_id;
+    const progress = await progressAPI.get(mangaId);
     if (progress && progress.chapter_id === chapter.value.id) {
       currentPage.value = progress.page_number || 1;
       updateReadingProgress();

@@ -31,8 +31,8 @@ export const useCatalogStore = defineStore('catalog', () => {
       };
       if (filters.value.selectedGenres.length) params.genres = filters.value.selectedGenres.join(',');
       const data = await mangaAPI.list(params);
-      mangaList.value = data.manga;
-      totalCount.value = data.total;
+      mangaList.value = data.manga || data;
+      totalCount.value = data.total || mangaList.value.length;
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,7 +41,7 @@ export const useCatalogStore = defineStore('catalog', () => {
   }
 
   async function fetchGenres() {
-    // Жанры можно получать отдельным эндпоинтом, но для простоты заглушка
+    // Заглушка, потом можно сделать API запрос
     genres.value = [
       { id: 1, name: 'Экшен', manga_count: 12 },
       { id: 2, name: 'Фэнтези', manga_count: 15 },

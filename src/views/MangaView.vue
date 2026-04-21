@@ -3,7 +3,7 @@
     <div class="container">
       <div class="manga-header">
         <div class="manga-cover">
-          <img :src="getCoverUrl(manga.cover_image)" :alt="manga.title" />
+          <img :src="getCoverUrl(manga.coverImage || manga.cover_image)" :alt="manga.title" />
         </div>
         <div class="manga-info">
           <h1>{{ manga.title }}</h1>
@@ -48,9 +48,9 @@
             class="chapter-item"
             @click="goToChapter(chapter.id)"
           >
-            <span>Глава {{ chapter.chapter_number }}</span>
+            <span>Глава {{ chapter.chapterNumber || chapter.chapter_number }}</span>
             <span class="chapter-title">{{ chapter.title }}</span>
-            <span class="chapter-date">{{ formatDate(chapter.created_at) }}</span>
+            <span class="chapter-date">{{ formatDate(chapter.createdAt || chapter.created_at) }}</span>
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMangaStore } from '@/stores/manga';
 import { useAuthStore } from '@/stores/auth';
-import { getCoverUrl } from '@/utils/imageHelper';
+import { getCoverUrl } from '@/api';
 import { userMangaStatusAPI, progressAPI } from '@/api';
 
 const route = useRoute();
@@ -85,8 +85,8 @@ const orderedChapters = computed(() => {
   if (!manga.value?.chapters) return [];
   const chapters = [...manga.value.chapters];
   return orderAsc.value
-    ? chapters.sort((a, b) => a.chapter_number - b.chapter_number)
-    : chapters.sort((a, b) => b.chapter_number - a.chapter_number);
+    ? chapters.sort((a, b) => (a.chapterNumber || a.chapter_number) - (b.chapterNumber || b.chapter_number))
+    : chapters.sort((a, b) => (b.chapterNumber || b.chapter_number) - (a.chapterNumber || a.chapter_number));
 });
 
 const getStatusText = (status) => {
@@ -122,7 +122,7 @@ const startReading = async () => {
   let chapterId = null;
   if (hasProgress.value) {
     try {
-      const progress = await progressAPI.get(manga.value.id, authStore.user.id);
+      const progress = await progressAPI.get(manga.value.id);
       if (progress && progress.chapter_id) chapterId = progress.chapter_id;
     } catch (err) {
       console.warn('Прогресс не загружен', err);
@@ -148,7 +148,7 @@ const loadData = async () => {
     manga.value = data;
     if (authStore.isLoggedIn) {
       try {
-        const progress = await progressAPI.get(data.id, authStore.user.id);
+        const progress = await progressAPI.get(data.id);
         hasProgress.value = !!progress;
       } catch (err) {
         console.warn('Прогресс не загружен', err);
@@ -183,7 +183,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* стили такие же, как в предыдущем варианте – оставьте свои */
+/* стили оставь свои */
 .manga-page { padding: 40px 0; background: #000; color: #fff; }
 .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .manga-header { display: flex; gap: 40px; margin-bottom: 50px; flex-wrap: wrap; }

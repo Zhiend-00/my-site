@@ -181,39 +181,20 @@
 
           <!-- ========== Вкладка Синхронизация ========== -->
           <div v-if="activeTab === 'sync'" class="tab-pane">
-            <h2>🔄 Синхронизация с файловой системой</h2>
-            <p>
-              Запуск синхронизации манги и глав на основе файлов на флешке
-              (папки <code>uploads/covers/</code> и <code>uploads/chapters/</code>).
-            </p>
-            <div class="sync-buttons">
-              <button
-                @click="runSync('manga')"
-                :disabled="syncLoading.manga"
-                class="sync-btn"
-              >
-                {{ syncLoading.manga ? 'Синхронизация...' : 'Синхронизировать мангу' }}
-              </button>
-              <button
-                @click="runSync('chapters')"
-                :disabled="syncLoading.chapters"
-                class="sync-btn"
-              >
-                {{ syncLoading.chapters ? 'Синхронизация...' : 'Синхронизировать главы' }}
-              </button>
-              <button
-                @click="runSync('all')"
-                :disabled="syncLoading.all"
-                class="sync-btn primary"
-              >
-                {{ syncLoading.all ? 'Синхронизация...' : 'Полная синхронизация' }}
-              </button>
-            </div>
-            <div v-if="syncResult" class="sync-result">
-              <h3>Результат:</h3>
-              <pre>{{ JSON.stringify(syncResult, null, 2) }}</pre>
-            </div>
-          </div>
+  <h2>🔄 Синхронизация с файловой системой</h2>
+  <div class="sync-buttons">
+    <button @click="runSync('all')" :disabled="syncLoading.all" class="sync-btn primary">
+      {{ syncLoading.all ? 'Синхронизация...' : 'Полная синхронизация (манга/главы)' }}
+    </button>
+    <button @click="runSync('pages')" :disabled="syncLoading.pages" class="sync-btn">
+      {{ syncLoading.pages ? 'Синхронизация...' : 'Синхронизировать страницы глав' }}
+    </button>
+  </div>
+  <div v-if="syncResult" class="sync-result">
+    <h3>Результат:</h3>
+    <pre>{{ JSON.stringify(syncResult, null, 2) }}</pre>
+  </div>
+</div>
         </div>
       </div>
     </div>
@@ -316,15 +297,13 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+<script setup>import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { mangaAPI, chaptersAPI, adminAPI } from '@/api'
 import { getCoverUrl, handleImageError } from '@/utils/imageHelper'
 
 const authStore = useAuthStore()
 
-// ==================== Состояние ====================
 const activeTab = ref('manga')
 const tabs = [
   { id: 'manga', name: '📚 Манга' },
@@ -333,18 +312,15 @@ const tabs = [
   { id: 'sync', name: '🔄 Синхронизация' }
 ]
 
-// Данные
 const mangaList = ref([])
 const userList = ref([])
 const mangaLoading = ref(false)
 const usersLoading = ref(false)
 
-// Главы
 const chaptersList = ref([])
 const chaptersLoading = ref(false)
 const chapterFilterMangaId = ref('')
 
-// Модалка главы
 const showChapterModal = ref(false)
 const editingChapter = ref(null)
 const chapterForm = reactive({
@@ -354,17 +330,14 @@ const chapterForm = reactive({
   pages_count: 0
 })
 
-// Модалка страниц главы
 const showPagesModal = ref(false)
 const pagesList = ref([])
 const pagesLoading = ref(false)
 const pagesChapterTitle = ref('')
 
-// Синхронизация
-const syncLoading = reactive({ manga: false, chapters: false, all: false })
+const syncLoading = reactive({ all: false, pages: false })
 const syncResult = ref(null)
 
-// Модалка манги
 const showMangaModal = ref(false)
 const editingManga = ref(null)
 const mangaForm = reactive({
@@ -377,7 +350,6 @@ const mangaForm = reactive({
   year: null
 })
 
-// ==================== Вспомогательные функции ====================
 const getStatusText = (status) => {
   const map = { ongoing: 'Онгоинг', completed: 'Завершено', hiatus: 'Хиатус' }
   return map[status] || status
@@ -389,22 +361,20 @@ const formatDate = (date) => {
 }
 
 const getMangaTitle = (mangaId) => {
-  const manga = mangaList.value.find(m => m.id === mangaId)
+  const manga = mangaList.value.find(m => m.id == mangaId)
   return manga ? manga.title : `ID: ${mangaId}`
 }
 
-// Фильтрованные главы
 const filteredChapters = computed(() => {
   if (!chapterFilterMangaId.value) return chaptersList.value
-  return chaptersList.value.filter(ch => ch.manga_id === chapterFilterMangaId.value)
+  return chaptersList.value.filter(ch => ch.manga_id == chapterFilterMangaId.value)
 })
 
-// ==================== Загрузка данных ====================
 const loadManga = async () => {
   mangaLoading.value = true
   try {
     const data = await mangaAPI.list({ limit: 100 })
-    mangaList.value = Array.isArray(data) ? data : (data.manga || [])
+    mangaList.value = data.manga || data
   } catch (error) {
     console.error('Ошибка загрузки манги:', error)
   } finally {
@@ -413,15 +383,18 @@ const loadManga = async () => {
 }
 
 const loadChapters = async () => {
-  chaptersLoading.value = true
+  chaptersLoading.value = true;
   try {
-    chaptersList.value = await chaptersAPI.list()
+    const params = {};
+    if (chapterFilterMangaId.value) params.mangaId = chapterFilterMangaId.value;
+    const data = await chaptersAPI.list(params);
+    chaptersList.value = data.chapters || [];
   } catch (error) {
-    console.error('Ошибка загрузки глав:', error)
+    console.error('Ошибка загрузки глав:', error);
   } finally {
-    chaptersLoading.value = false
+    chaptersLoading.value = false;
   }
-}
+};
 
 const loadUsers = async () => {
   usersLoading.value = true
@@ -434,13 +407,12 @@ const loadUsers = async () => {
   }
 }
 
-// ==================== Управление мангой ====================
 const deleteManga = async (id) => {
   if (!confirm('Удалить эту мангу? Это действие необратимо.')) return
   try {
     await adminAPI.deleteManga(id)
     await loadManga()
-    await loadChapters() // главы этой манги тоже удалятся (cascade)
+    await loadChapters()
   } catch (error) {
     alert('Ошибка при удалении манги')
   }
@@ -452,7 +424,7 @@ const openMangaModal = (manga = null) => {
     mangaForm.title = manga.title || ''
     mangaForm.description = manga.description || ''
     mangaForm.author = manga.author || ''
-    mangaForm.cover_image = manga.cover_image || ''
+    mangaForm.cover_image = manga.coverImage || manga.cover_image || ''
     mangaForm.status = manga.status || 'ongoing'
     mangaForm.genresInput = (manga.genres || []).join(', ')
     mangaForm.year = manga.year || null
@@ -481,28 +453,21 @@ const saveManga = async () => {
     status: mangaForm.status,
     genres: mangaForm.genresInput.split(',').map(g => g.trim()).filter(Boolean),
     year: mangaForm.year,
-    updated_at: new Date().toISOString()
-  }
+  };
 
   try {
     if (editingManga.value) {
-      await adminAPI.updateManga(editingManga.value.id, data)
+      await adminAPI.updateManga(editingManga.value.id, data);
     } else {
-      data.id = Date.now()
-      data.created_at = new Date().toISOString()
-      data.views = 0
-      data.rating = 0
-      data.chapters_count = 0
-      await adminAPI.createManga(data)
+      await adminAPI.createManga(data);
     }
-    closeMangaModal()
-    await loadManga()
+    closeMangaModal();
+    await loadManga();
   } catch (error) {
-    alert('Ошибка сохранения манги')
+    alert('Ошибка сохранения манги: ' + error.message);
   }
-}
+};
 
-// ==================== Управление главами ====================
 const deleteChapter = async (id) => {
   if (!confirm('Удалить эту главу?')) return
   try {
@@ -561,7 +526,6 @@ const saveChapter = async () => {
   }
 }
 
-// Просмотр страниц главы
 const viewChapterPages = async (chapter) => {
   pagesChapterTitle.value = `Глава ${chapter.chapter_number}${chapter.title ? ' — ' + chapter.title : ''}`
   pagesLoading.value = true
@@ -582,13 +546,12 @@ const closePagesModal = () => {
   pagesList.value = []
 }
 
-// ==================== Управление пользователями ====================
 const updateUserRole = async (user) => {
   try {
     await adminAPI.updateUserRole(user.id, user.role)
   } catch (error) {
     alert('Не удалось обновить роль пользователя')
-    await loadUsers() // откат
+    await loadUsers()
   }
 }
 
@@ -602,36 +565,26 @@ const deleteUser = async (id) => {
   }
 }
 
-// ==================== Синхронизация ====================
 const runSync = async (type) => {
-  let promise = null
-  let loadingKey = ''
-  if (type === 'manga') {
-    promise = adminAPI.syncManga()
-    loadingKey = 'manga'
-  } else if (type === 'chapters') {
-    promise = adminAPI.syncChapters()
-    loadingKey = 'chapters'
-  } else {
-    promise = adminAPI.syncAll()
-    loadingKey = 'all'
-  }
-
-  syncLoading[loadingKey] = true
+  syncLoading[type] = true
   syncResult.value = null
   try {
-    const data = await promise
+    let data
+    if (type === 'all') {
+      data = await adminAPI.syncAll()
+    } else if (type === 'pages') {
+      data = await adminAPI.syncPages()
+    }
     syncResult.value = data
     await loadManga()
     await loadChapters()
   } catch (error) {
-    alert('Ошибка синхронизации')
+    alert('Ошибка синхронизации: ' + error.message)
   } finally {
-    syncLoading[loadingKey] = false
+    syncLoading[type] = false
   }
 }
 
-// ==================== Инициализация ====================
 onMounted(() => {
   if (authStore.isAdmin) {
     loadManga()
