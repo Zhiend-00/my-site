@@ -25,6 +25,12 @@ model User {
   forumTopics      ForumTopic[]
   forumPosts       ForumPost[]
   feedbacks        Feedback[]
+  
+  // Новые связи
+  ratings          Rating[]
+  mangaComments    MangaComment[]
+  forumPostLikes   ForumPostLike[]
+  notifications    Notification[]
 
   @@map("users")
 }
@@ -50,12 +56,16 @@ model Manga {
   favorites        User[]             @relation("UserFavorites")
   userStatuses     UserMangaStatus[]
   readingProgress  ReadingProgress[]
+  
+  // Новые связи
+  ratings          Rating[]
+  comments         MangaComment[]
 
   @@map("manga")
 }
 
 model Chapter {
-  id               Float              @id // оставляем Float для совместимости со старыми ID
+  id               Float              @id
   mangaId          BigInt             @map("manga_id")
   chapterNumber    Int                @map("chapter_number")
   title            String?
@@ -164,6 +174,9 @@ model ForumPost {
 
   topic            ForumTopic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   author           User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Новая связь
+  likesRelation    ForumPostLike[]
 
   @@map("forum_posts")
 }
@@ -182,4 +195,61 @@ model Feedback {
   user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("feedback")
+}
+
+// ========== НОВЫЕ МОДЕЛИ ==========
+
+model Rating {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  mangaId   BigInt   @map("manga_id")
+  value     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga     Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mangaId])
+  @@map("ratings")
+}
+
+model MangaComment {
+  id        BigInt   @id @default(autoincrement())
+  mangaId   BigInt   @map("manga_id")
+  authorId  BigInt   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  manga     Manga    @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("manga_comments")
+}
+
+model ForumPostLike {
+  id        BigInt   @id @default(autoincrement())
+  postId    BigInt   @map("post_id")
+  userId    BigInt   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("forum_post_likes")
+}
+
+model Notification {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  type      String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }

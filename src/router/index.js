@@ -30,6 +30,18 @@ const routes = [
     component: () => import('@/views/ForumView.vue')
   },
   {
+    path: '/forum/category/:id',
+    name: 'ForumCategory',
+    component: () => import('@/views/ForumCategoryView.vue'),
+    props: true
+  },
+  {
+    path: '/forum/topic/:id',
+    name: 'ForumTopic',
+    component: () => import('@/views/ForumTopicView.vue'),
+    props: true
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/LoginView.vue')
@@ -52,22 +64,21 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/AboutView.vue')
+  },
+  {
+    path: '/notifications',
+    name: 'Notifications',
+    component: () => import('@/views/NotificationsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue')
   },
-  {
-  path: '/forum/category/:id',
-  name: 'ForumCategory',
-  component: () => import('@/views/ForumCategoryView.vue'),
-  props: true
-},
-{
-  path: '/forum/topic/:id',
-  name: 'ForumTopic',
-  component: () => import('@/views/ForumTopicView.vue'),
-  props: true
-},
 ]
 
 const router = createRouter({

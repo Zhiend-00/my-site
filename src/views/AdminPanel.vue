@@ -3,7 +3,6 @@
     <div class="container">
       <h1>⚙️ Административная панель</h1>
 
-      <!-- Проверка прав администратора -->
       <div v-if="!authStore.isAdmin" class="access-denied">
         <div class="denied-card">
           <div class="denied-icon">⛔</div>
@@ -181,20 +180,167 @@
 
           <!-- ========== Вкладка Синхронизация ========== -->
           <div v-if="activeTab === 'sync'" class="tab-pane">
-  <h2>🔄 Синхронизация с файловой системой</h2>
-  <div class="sync-buttons">
-    <button @click="runSync('all')" :disabled="syncLoading.all" class="sync-btn primary">
-      {{ syncLoading.all ? 'Синхронизация...' : 'Полная синхронизация (манга/главы)' }}
-    </button>
-    <button @click="runSync('pages')" :disabled="syncLoading.pages" class="sync-btn">
-      {{ syncLoading.pages ? 'Синхронизация...' : 'Синхронизировать страницы глав' }}
-    </button>
-  </div>
-  <div v-if="syncResult" class="sync-result">
-    <h3>Результат:</h3>
-    <pre>{{ JSON.stringify(syncResult, null, 2) }}</pre>
-  </div>
-</div>
+            <h2>🔄 Синхронизация с файловой системой</h2>
+            <div class="sync-buttons">
+              <button @click="runSync('all')" :disabled="syncLoading.all" class="sync-btn primary">
+                {{ syncLoading.all ? 'Синхронизация...' : 'Полная синхронизация (манга/главы)' }}
+              </button>
+              <button @click="runSync('pages')" :disabled="syncLoading.pages" class="sync-btn">
+                {{ syncLoading.pages ? 'Синхронизация...' : 'Синхронизировать страницы глав' }}
+              </button>
+            </div>
+            <div v-if="syncResult" class="sync-result">
+              <h3>Результат:</h3>
+              <pre>{{ JSON.stringify(syncResult, null, 2) }}</pre>
+            </div>
+          </div>
+
+          <!-- ========== НОВАЯ ВКЛАДКА: ФОРУМ ========== -->
+          <div v-if="activeTab === 'forum'" class="tab-pane">
+            <h2>💬 Управление форумом</h2>
+            
+            <!-- Подвкладки форума -->
+            <div class="forum-subtabs">
+              <button @click="forumSubtab = 'categories'" :class="{ active: forumSubtab === 'categories' }">📁 Категории</button>
+              <button @click="forumSubtab = 'topics'" :class="{ active: forumSubtab === 'topics' }">📌 Темы</button>
+              <button @click="forumSubtab = 'posts'" :class="{ active: forumSubtab === 'posts' }">💬 Посты</button>
+            </div>
+
+            <!-- Категории -->
+            <div v-if="forumSubtab === 'categories'" class="forum-pane">
+              <div class="pane-header">
+                <h3>Категории форума</h3>
+                <button class="add-btn" @click="openCategoryModal()">➕ Новая категория</button>
+              </div>
+              <div v-if="categoriesLoading" class="loading">Загрузка...</div>
+              <div v-else class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Иконка</th>
+                      <th>Название</th>
+                      <th>Slug</th>
+                      <th>Тем</th>
+                      <th>Сообщений</th>
+                      <th>Порядок</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="cat in categories" :key="cat.id">
+                      <td>{{ cat.id }}</td>
+                      <td>{{ cat.icon || '📁' }}</td>
+                      <td>{{ cat.name }}</td>
+                      <td>{{ cat.slug }}</td>
+                      <td>{{ cat.topicsCount || 0 }}</td>
+                      <td>{{ cat.postsCount || 0 }}</td>
+                      <td>{{ cat.order }}</td>
+                      <td>
+                        <button class="edit-btn" @click="openCategoryModal(cat)">✏️</button>
+                        <button class="delete-btn" @click="deleteCategory(cat.id)">🗑️</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Темы -->
+            <div v-if="forumSubtab === 'topics'" class="forum-pane">
+              <div class="filter-section">
+                <label>Фильтр по категории:</label>
+                <select v-model="topicFilterCategoryId" @change="loadTopics">
+                  <option value="">Все категории</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                </select>
+              </div>
+              <div v-if="topicsLoading" class="loading">Загрузка...</div>
+              <div v-else class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Категория</th>
+                      <th>Заголовок</th>
+                      <th>Автор</th>
+                      <th>Просмотры</th>
+                      <th>Посты</th>
+                      <th>Закреплена</th>
+                      <th>Закрыта</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="topic in topics" :key="topic.id">
+                      <td>{{ topic.id }}</td>
+                      <td>{{ topic.category?.name || '—' }}</td>
+                      <td>{{ topic.title }}</td>
+                      <td>{{ topic.author?.username || '—' }}</td>
+                      <td>{{ topic.views }}</td>
+                      <td>{{ topic.postsCount }}</td>
+                      <td>{{ topic.isPinned ? '📌' : '—' }}</td>
+                      <td>{{ topic.isLocked ? '🔒' : '—' }}</td>
+                      <td>
+                        <button class="edit-btn" @click="togglePinTopic(topic)">{{ topic.isPinned ? '📌' : '📍' }}</button>
+                        <button class="edit-btn" @click="toggleLockTopic(topic)">{{ topic.isLocked ? '🔓' : '🔒' }}</button>
+                        <button class="delete-btn" @click="deleteTopic(topic.id)">🗑️</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <Pagination
+                  v-if="topicsTotalPages > 1"
+                  :current-page="topicsPage"
+                  :total-pages="topicsTotalPages"
+                  @page-change="changeTopicsPage"
+                />
+              </div>
+            </div>
+
+            <!-- Посты -->
+            <div v-if="forumSubtab === 'posts'" class="forum-pane">
+              <div class="filter-section">
+                <label>Фильтр по теме (ID):</label>
+                <input type="number" v-model.number="postFilterTopicId" placeholder="ID темы" @input="loadPosts" />
+              </div>
+              <div v-if="postsLoading" class="loading">Загрузка...</div>
+              <div v-else class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Тема</th>
+                      <th>Автор</th>
+                      <th>Содержание</th>
+                      <th>Лайки</th>
+                      <th>Дата</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="post in posts" :key="post.id">
+                      <td>{{ post.id }}</td>
+                      <td>{{ post.topic?.title || '—' }}</td>
+                      <td>{{ post.author?.username || '—' }}</td>
+                      <td>{{ truncateText(post.content, 50) }}</td>
+                      <td>{{ post.likes }}</td>
+                      <td>{{ formatDate(post.createdAt) }}</td>
+                      <td>
+                        <button class="delete-btn" @click="deletePost(post.id)">🗑️</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <Pagination
+                  v-if="postsTotalPages > 1"
+                  :current-page="postsPage"
+                  :total-pages="postsTotalPages"
+                  @page-change="changePostsPage"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -294,13 +440,105 @@
         </div>
       </div>
     </div>
+
+    <!-- ========== Модальное окно для категории форума ========== -->
+    <div v-if="showCategoryModal" class="modal">
+      <div class="modal-content">
+        <h2>{{ editingCategory ? 'Редактировать категорию' : 'Новая категория' }}</h2>
+        <form @submit.prevent="saveCategory">
+          <div class="form-group">
+            <label>Название *</label>
+            <input v-model="categoryForm.name" required />
+          </div>
+          <div class="form-group">
+            <label>Slug *</label>
+            <input v-model="categoryForm.slug" required />
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <textarea v-model="categoryForm.description" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Иконка (эмодзи)</label>
+            <input v-model="categoryForm.icon" placeholder="📁" />
+          </div>
+          <div class="form-group">
+            <label>Порядок</label>
+            <input type="number" v-model.number="categoryForm.order" />
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="save-btn">Сохранить</button>
+            <button type="button" class="cancel-btn" @click="closeCategoryModal">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- Вкладка Сообщения -->
+<div v-if="activeTab === 'feedback'" class="tab-pane">
+  <h2>📬 Сообщения от пользователей</h2>
+  <div v-if="feedbackLoading" class="loading">Загрузка...</div>
+  <div v-else class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Email</th>
+          <th>Сообщение</th>
+          <th>Статус</th>
+          <th>Дата</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="msg in feedbackList" :key="msg.id">
+          <td>{{ msg.id }}</td>
+          <td>{{ msg.name }}</td>
+          <td>{{ msg.email }}</td>
+          <td>{{ truncateText(msg.message, 50) }}</td>
+          <td>
+            <select v-model="msg.status" @change="updateFeedbackStatus(msg)" class="status-select">
+              <option value="new">Новое</option>
+              <option value="read">Прочитано</option>
+              <option value="replied">Отвечено</option>
+            </select>
+          </td>
+          <td>{{ formatDate(msg.created_at) }}</td>
+          <td>
+            <button class="view-btn" @click="viewFeedback(msg)">Просмотр</button>
+            <button class="delete-btn" @click="deleteFeedback(msg.id)">Удалить</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Модальное окно просмотра сообщения -->
+<div v-if="showFeedbackModal" class="modal">
+  <div class="modal-content">
+    <h3>Сообщение от {{ selectedFeedback.name }}</h3>
+    <p><strong>Email:</strong> {{ selectedFeedback.email }}</p>
+    <p><strong>Дата:</strong> {{ formatDate(selectedFeedback.created_at) }}</p>
+    <div class="message-body">{{ selectedFeedback.message }}</div>
+    <div class="reply-section">
+      <textarea v-model="replyText" placeholder="Ответить пользователю..."></textarea>
+      <button @click="sendReply" :disabled="!replyText.trim() || replySending">Отправить ответ</button>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" @click="closeFeedbackModal">Закрыть</button>
+    </div>
+  </div>
+</div>
   </div>
 </template>
 
-<script setup>import { ref, reactive, computed, onMounted } from 'vue'
+<script setup>
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { mangaAPI, chaptersAPI, adminAPI } from '@/api'
 import { getCoverUrl, handleImageError } from '@/utils/imageHelper'
+import Pagination from '@/components/catalog/Pagination.vue'
 
 const authStore = useAuthStore()
 
@@ -309,18 +547,21 @@ const tabs = [
   { id: 'manga', name: '📚 Манга' },
   { id: 'chapters', name: '📖 Главы' },
   { id: 'users', name: '👥 Пользователи' },
-  { id: 'sync', name: '🔄 Синхронизация' }
+  { id: 'forum', name: '💬 Форум' },
+  { id: 'sync', name: '🔄 Синхронизация' },
+  { id: 'feedback', name: '📬 Сообщения' }
 ]
 
+// --- Общие данные ---
 const mangaList = ref([])
 const userList = ref([])
 const mangaLoading = ref(false)
 const usersLoading = ref(false)
 
+// --- Главы ---
 const chaptersList = ref([])
 const chaptersLoading = ref(false)
 const chapterFilterMangaId = ref('')
-
 const showChapterModal = ref(false)
 const editingChapter = ref(null)
 const chapterForm = reactive({
@@ -329,15 +570,21 @@ const chapterForm = reactive({
   title: '',
   pages_count: 0
 })
-
 const showPagesModal = ref(false)
 const pagesList = ref([])
 const pagesLoading = ref(false)
 const pagesChapterTitle = ref('')
 
+const filteredChapters = computed(() => {
+  if (!chapterFilterMangaId.value) return chaptersList.value
+  return chaptersList.value.filter(ch => ch.manga_id == chapterFilterMangaId.value)
+})
+
+// --- Синхронизация ---
 const syncLoading = reactive({ all: false, pages: false })
 const syncResult = ref(null)
 
+// --- Манга (модалка) ---
 const showMangaModal = ref(false)
 const editingManga = ref(null)
 const mangaForm = reactive({
@@ -350,6 +597,102 @@ const mangaForm = reactive({
   year: null
 })
 
+// --- ФОРУМ ---
+const forumSubtab = ref('categories')
+const categories = ref([])
+const categoriesLoading = ref(false)
+const showCategoryModal = ref(false)
+const editingCategory = ref(null)
+const categoryForm = reactive({
+  name: '',
+  slug: '',
+  description: '',
+  icon: '📁',
+  order: 1
+})
+
+const feedbackList = ref([])
+const feedbackLoading = ref(false)
+const showFeedbackModal = ref(false)
+const selectedFeedback = ref(null)
+const replyText = ref('')
+const replySending = ref(false)
+
+const loadFeedback = async () => {
+  feedbackLoading.value = true
+  try {
+    const data = await adminAPI.getFeedback()
+    feedbackList.value = data || []
+  } catch (e) {
+    console.error(e)
+  } finally {
+    feedbackLoading.value = false
+  }
+}
+
+const updateFeedbackStatus = async (msg) => {
+  try {
+    await adminAPI.updateFeedback(msg.id, { status: msg.status })
+  } catch (e) {
+    alert('Ошибка обновления')
+  }
+}
+
+const deleteFeedback = async (id) => {
+  if (!confirm('Удалить сообщение?')) return
+  try {
+    await adminAPI.deleteFeedback(id)
+    await loadFeedback()
+  } catch (e) {
+    alert('Ошибка удаления')
+  }
+}
+
+const viewFeedback = (msg) => {
+  selectedFeedback.value = msg
+  replyText.value = ''
+  showFeedbackModal.value = true
+}
+
+const closeFeedbackModal = () => {
+  showFeedbackModal.value = false
+  selectedFeedback.value = null
+}
+
+const sendReply = async () => {
+  if (!replyText.value.trim()) return
+  replySending.value = true
+  try {
+    await adminAPI.replyFeedback(selectedFeedback.value.id, replyText.value)
+    alert('Ответ отправлен')
+    replyText.value = ''
+    selectedFeedback.value.status = 'replied'
+    closeFeedbackModal()
+    await loadFeedback()
+  } catch (e) {
+    alert('Ошибка отправки')
+  } finally {
+    replySending.value = false
+  }
+}
+
+const topics = ref([])
+const topicsLoading = ref(false)
+const topicFilterCategoryId = ref('')
+const topicsPage = ref(1)
+const topicsLimit = 20
+const topicsTotal = ref(0)
+const topicsTotalPages = computed(() => Math.ceil(topicsTotal.value / topicsLimit))
+
+const posts = ref([])
+const postsLoading = ref(false)
+const postFilterTopicId = ref(null)
+const postsPage = ref(1)
+const postsLimit = 20
+const postsTotal = ref(0)
+const postsTotalPages = computed(() => Math.ceil(postsTotal.value / postsLimit))
+
+// --- Вспомогательные функции ---
 const getStatusText = (status) => {
   const map = { ongoing: 'Онгоинг', completed: 'Завершено', hiatus: 'Хиатус' }
   return map[status] || status
@@ -365,11 +708,12 @@ const getMangaTitle = (mangaId) => {
   return manga ? manga.title : `ID: ${mangaId}`
 }
 
-const filteredChapters = computed(() => {
-  if (!chapterFilterMangaId.value) return chaptersList.value
-  return chaptersList.value.filter(ch => ch.manga_id == chapterFilterMangaId.value)
-})
+const truncateText = (text, max) => {
+  if (!text) return '—'
+  return text.length > max ? text.slice(0, max) + '…' : text
+}
 
+// --- Загрузка данных ---
 const loadManga = async () => {
   mangaLoading.value = true
   try {
@@ -383,18 +727,18 @@ const loadManga = async () => {
 }
 
 const loadChapters = async () => {
-  chaptersLoading.value = true;
+  chaptersLoading.value = true
   try {
-    const params = {};
-    if (chapterFilterMangaId.value) params.mangaId = chapterFilterMangaId.value;
-    const data = await chaptersAPI.list(params);
-    chaptersList.value = data.chapters || [];
+    const params = {}
+    if (chapterFilterMangaId.value) params.mangaId = chapterFilterMangaId.value
+    const data = await chaptersAPI.list(params)
+    chaptersList.value = data.chapters || []
   } catch (error) {
-    console.error('Ошибка загрузки глав:', error);
+    console.error('Ошибка загрузки глав:', error)
   } finally {
-    chaptersLoading.value = false;
+    chaptersLoading.value = false
   }
-};
+}
 
 const loadUsers = async () => {
   usersLoading.value = true
@@ -453,20 +797,20 @@ const saveManga = async () => {
     status: mangaForm.status,
     genres: mangaForm.genresInput.split(',').map(g => g.trim()).filter(Boolean),
     year: mangaForm.year,
-  };
+  }
 
   try {
     if (editingManga.value) {
-      await adminAPI.updateManga(editingManga.value.id, data);
+      await adminAPI.updateManga(editingManga.value.id, data)
     } else {
-      await adminAPI.createManga(data);
+      await adminAPI.createManga(data)
     }
-    closeMangaModal();
-    await loadManga();
+    closeMangaModal()
+    await loadManga()
   } catch (error) {
-    alert('Ошибка сохранения манги: ' + error.message);
+    alert('Ошибка сохранения манги: ' + error.message)
   }
-};
+}
 
 const deleteChapter = async (id) => {
   if (!confirm('Удалить эту главу?')) return
@@ -585,6 +929,165 @@ const runSync = async (type) => {
   }
 }
 
+// --- ФОРУМ: загрузка категорий ---
+const loadCategories = async () => {
+  categoriesLoading.value = true
+  try {
+    categories.value = await adminAPI.getForumCategories()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
+// --- ФОРУМ: темы ---
+const loadTopics = async () => {
+  topicsLoading.value = true
+  try {
+    const params = { page: topicsPage.value, limit: topicsLimit }
+    if (topicFilterCategoryId.value) params.categoryId = topicFilterCategoryId.value
+    const data = await adminAPI.getForumTopics(params)
+    topics.value = data.topics || []
+    topicsTotal.value = data.total || 0
+  } catch (e) {
+    console.error(e)
+  } finally {
+    topicsLoading.value = false
+  }
+}
+
+const changeTopicsPage = (page) => {
+  topicsPage.value = page
+  loadTopics()
+}
+
+const togglePinTopic = async (topic) => {
+  try {
+    await adminAPI.updateForumTopic(topic.id, { isPinned: !topic.isPinned })
+    await loadTopics()
+  } catch (e) {
+    alert('Ошибка')
+  }
+}
+
+const toggleLockTopic = async (topic) => {
+  try {
+    await adminAPI.updateForumTopic(topic.id, { isLocked: !topic.isLocked })
+    await loadTopics()
+  } catch (e) {
+    alert('Ошибка')
+  }
+}
+
+const deleteTopic = async (id) => {
+  if (!confirm('Удалить тему и все её посты?')) return
+  try {
+    await adminAPI.deleteForumTopic(id)
+    await loadTopics()
+  } catch (e) {
+    alert('Ошибка удаления')
+  }
+}
+
+// --- ФОРУМ: посты ---
+const loadPosts = async () => {
+  postsLoading.value = true
+  try {
+    const params = { page: postsPage.value, limit: postsLimit }
+    if (postFilterTopicId.value) params.topicId = postFilterTopicId.value
+    const data = await adminAPI.getForumPosts(params)
+    posts.value = data.posts || []
+    postsTotal.value = data.total || 0
+  } catch (e) {
+    console.error(e)
+  } finally {
+    postsLoading.value = false
+  }
+}
+
+const changePostsPage = (page) => {
+  postsPage.value = page
+  loadPosts()
+}
+
+const deletePost = async (id) => {
+  if (!confirm('Удалить пост?')) return
+  try {
+    await adminAPI.deleteForumPost(id)
+    await loadPosts()
+  } catch (e) {
+    alert('Ошибка удаления')
+  }
+}
+
+// --- ФОРУМ: категории (CRUD) ---
+const openCategoryModal = (cat = null) => {
+  editingCategory.value = cat
+  if (cat) {
+    categoryForm.name = cat.name
+    categoryForm.slug = cat.slug
+    categoryForm.description = cat.description || ''
+    categoryForm.icon = cat.icon || '📁'
+    categoryForm.order = cat.order || 1
+  } else {
+    categoryForm.name = ''
+    categoryForm.slug = ''
+    categoryForm.description = ''
+    categoryForm.icon = '📁'
+    categoryForm.order = 1
+  }
+  showCategoryModal.value = true
+}
+
+const closeCategoryModal = () => {
+  showCategoryModal.value = false
+}
+
+const saveCategory = async () => {
+  try {
+    if (editingCategory.value) {
+      await adminAPI.updateForumCategory(editingCategory.value.id, categoryForm)
+    } else {
+      await adminAPI.createForumCategory(categoryForm)
+    }
+    closeCategoryModal()
+    await loadCategories()
+  } catch (e) {
+    alert('Ошибка сохранения категории: ' + e.message)
+  }
+}
+
+const deleteCategory = async (id) => {
+  if (!confirm('Удалить категорию? (Темы должны быть удалены предварительно)')) return
+  try {
+    await adminAPI.deleteForumCategory(id)
+    await loadCategories()
+  } catch (e) {
+    alert('Ошибка удаления: ' + e.message)
+  }
+}
+
+// При переключении на вкладку "Форум" подгружаем категории
+const loadForumData = () => {
+  if (activeTab.value === 'forum') {
+    loadCategories()
+    if (forumSubtab.value === 'topics') loadTopics()
+    if (forumSubtab.value === 'posts') loadPosts()
+  }
+}
+
+// Наблюдатели
+watch(activeTab, (newTab) => {
+  if (newTab === 'forum') loadForumData()
+  if (newTab === 'feedback') loadFeedback()
+})
+
+watch(forumSubtab, (newSub) => {
+  if (newSub === 'topics' && topics.value.length === 0) loadTopics()
+  if (newSub === 'posts' && posts.value.length === 0) loadPosts()
+})
+
 onMounted(() => {
   if (authStore.isAdmin) {
     loadManga()
@@ -595,7 +1098,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Стили полностью из вашего примера (я их скопировал, они остаются без изменений) */
 .admin-page {
   min-height: calc(100vh - var(--header-height) - var(--footer-height));
   padding: 40px 0;
@@ -733,7 +1235,8 @@ h1 {
   color: #80832A;
 }
 
-.filter-section select {
+.filter-section select,
+.filter-section input {
   padding: 6px 10px;
   background: #2B2B2B;
   color: white;
@@ -787,9 +1290,17 @@ h1 {
   color: white;
 }
 
-.status-badge.ongoing { background: #07660C; }
-.status-badge.completed { background: #80832A; }
-.status-badge.hiatus { background: #ff9800; }
+.status-badge.ongoing {
+  background: #07660C;
+}
+
+.status-badge.completed {
+  background: #80832A;
+}
+
+.status-badge.hiatus {
+  background: #ff9800;
+}
 
 .edit-btn,
 .delete-btn,
@@ -1003,5 +1514,74 @@ h1 {
   padding: 5px;
   color: #80832A;
   font-size: 0.9rem;
+}
+
+/* Стили для подвкладок форума */
+.forum-subtabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #2B2B2B;
+  padding-bottom: 10px;
+}
+
+.forum-subtabs button {
+  background: transparent;
+  border: none;
+  color: #80832A;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s;
+}
+
+.forum-subtabs button:hover {
+  background: #2B2B2B;
+}
+
+.forum-subtabs button.active {
+  background: #07660C;
+  color: white;
+}
+
+.forum-pane {
+  margin-top: 10px;
+}
+
+.status-select {
+  background: #202020;
+  color: white;
+  border: 1px solid #80832a;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.message-body {
+  background: #2b2b2b;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  white-space: pre-wrap;
+}
+.reply-section {
+  margin: 20px 0;
+}
+.reply-section textarea {
+  width: 100%;
+  padding: 10px;
+  background: #2b2b2b;
+  border: 1px solid #80832a;
+  color: white;
+  border-radius: 6px;
+  resize: vertical;
+}
+.reply-section button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #07660c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }
 </style>

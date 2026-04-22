@@ -6,6 +6,9 @@
         <a href="#" class="social-link">Telegram</a>
         <a href="#" class="social-link">Discord</a>
       </div>
+      <div class="footer-links">
+        <router-link to="/about" class="footer-link">О нас</router-link>
+      </div>
       <p class="copyright">© {{ currentYear }} Forgotten Team</p>
     </div>
   </footer>
@@ -32,6 +35,7 @@ const currentYear = computed(() => new Date().getFullYear())
   justify-content: space-between;
   align-items: center;
   height: 100%;
+  gap: 20px;
 }
 .social-link {
   color: var(--color-secondary);
@@ -42,11 +46,28 @@ const currentYear = computed(() => new Date().getFullYear())
 .social-link:hover {
   color: var(--color-primary);
 }
+.footer-link {
+  color: var(--color-text);
+  text-decoration: none;
+  margin: 0 10px;
+  opacity: 0.8;
+}
+.footer-link:hover {
+  color: var(--color-primary);
+}
 .copyright {
   color: var(--color-text-muted);
   font-size: 0.85rem;
+  margin-left: auto;
 }
 @media (max-width: 768px) {
-  .footer-container { flex-direction: column; justify-content: center; gap: 5px; }
+  .footer-container {
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+  }
+  .copyright {
+    margin-left: 0;
+  }
 }
 </style>

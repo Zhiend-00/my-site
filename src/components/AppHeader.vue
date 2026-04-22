@@ -21,11 +21,13 @@ const handleLogout = () => {
         <router-link to="/" class="nav-link">Главная</router-link>
         <router-link to="/catalog" class="nav-link">Каталог</router-link>
         <router-link to="/forum" class="nav-link">Форум</router-link>
-        
+        <router-link v-if="authStore.isLoggedIn" to="/notifications" class="nav-link">
+        Уведомления
+        </router-link>
+
         <div v-if="authStore.isLoggedIn" class="user-menu">
-          <!-- Кнопка админ-панели (только для админа) -->
           <router-link v-if="authStore.isAdmin" to="/admin" class="nav-link admin-link">
-            ⚙️ Админ-панель
+            Админ-панель
           </router-link>
           <router-link to="/profile" class="nav-link">Профиль</router-link>
           <button @click="handleLogout" class="logout-btn">Выйти</button>
@@ -70,6 +72,7 @@ const handleLogout = () => {
   padding: 8px 0;
   position: relative;
   transition: color var(--transition-fast);
+  font-size: 1rem;
 }
 .nav-link:hover {
   color: var(--color-primary);
@@ -103,14 +106,19 @@ const handleLogout = () => {
   background: var(--color-secondary);
   color: white;
 }
-@media (max-width: 768px) {
-  .logo-link { font-size: 1.2rem; }
-  .nav { gap: var(--spacing-sm); }
-}
 .admin-link {
-  color: #ffaa00 !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
 }
 .admin-link:hover {
-  color: #ffcc44 !important;
+  color: var(--color-primary-hover) !important;
+}
+@media (max-width: 768px) {
+  .logo-link {
+    font-size: 1.2rem;
+  }
+  .nav {
+    gap: var(--spacing-sm);
+  }
 }
 </style>
