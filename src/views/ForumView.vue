@@ -34,6 +34,12 @@
         </div>
       </div>
       
+      <!-- Баннер верификации email -->
+      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-banner">
+        <span>⚠️ Чтобы создавать темы, подтвердите Email.</span>
+        <router-link to="/verify-email" class="verify-link">Подтвердить</router-link>
+      </div>
+      
       <!-- Основной контент -->
       <div class="forum-content">
         <!-- Боковая панель -->
@@ -344,8 +350,16 @@ const onSearchInput = () => {
 };
 
 const handleCreateTopic = async (data) => {
+  if (!authStore.isLoggedIn) {
+    router.push('/login');
+    return;
+  }
+  if (!authStore.user.emailVerified) {
+    alert('Подтвердите email для создания темы');
+    return;
+  }
   try {
-    await forumAPI.createTopic({ ...data, categoryId: selectedCategoryId.value });
+    await forumAPI.createTopic(data);
     showNewTopicModal.value = false;
     viewMode.value = 'topics';
     await loadTopics();
@@ -449,6 +463,26 @@ onMounted(() => {
   background: #80832A;
   color: black;
 }
+
+/* Баннер верификации */
+.verification-banner {
+  background: rgba(255,165,0,0.15);
+  border: 1px solid #ffaa00;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.verify-link {
+  background: #07660c;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
 .forum-content {
   display: grid;
   grid-template-columns: 300px 1fr;
@@ -581,19 +615,12 @@ onMounted(() => {
   padding: 8px 12px;
 }
 
-/* ========== ИСПРАВЛЕННАЯ СЕКЦИЯ - КАТЕГОРИИ В СТОЛБИК ========== */
+/* ========== КАТЕГОРИИ В СТОЛБИК ========== */
 .categories-grid {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-
-/* Альтернативный вариант через grid (тоже работает): */
-/* .categories-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-} */
 
 .category-card {
   background: #202020;
@@ -630,7 +657,6 @@ onMounted(() => {
   padding-top: 15px;
   border-top: 1px solid #2B2B2B;
 }
-/* ========================================== */
 
 .topics-list-container {
   background: #202020;

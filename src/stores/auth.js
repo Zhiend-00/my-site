@@ -32,9 +32,8 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null;
     try {
       const data = await authAPI.register(userData);
-      localStorage.setItem('token', data.token);
-      user.value = data.user;
-      return { success: true };
+      // не сохраняем токен автоматически, ждём подтверждения
+      return { success: true, message: data.message || 'Регистрация успешна' };
     } catch (err) {
       error.value = err.message;
       return { success: false };
@@ -54,12 +53,43 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token) return;
     try {
       const data = await authAPI.me();
-      user.value = data.user;
+      user.value = data.user || data; // API может вернуть просто объект пользователя
     } catch {
       logout();
     }
   }
 
+  // Восстановление пароля
+  async function forgotPassword(email) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const data = await authAPI.forgotPassword(email);
+      return { success: true, message: data.message };
+    } catch (err) {
+      error.value = err.message;
+      return { success: false };
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Сброс пароля (для ResetPasswordView)
+  async function resetPassword(token, password) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const data = await authAPI.resetPassword(token, password);
+      return { success: true, message: data.message };
+    } catch (err) {
+      error.value = err.message;
+      return { success: false };
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Инициализация
   checkAuth();
 
   return {
@@ -73,5 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     checkAuth,
+    forgotPassword,
+    resetPassword
   };
 });

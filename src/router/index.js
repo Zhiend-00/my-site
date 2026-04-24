@@ -64,21 +64,43 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
-    path: '/about',
-    name: 'About',
-    component: () => import('@/views/AboutView.vue')
-  },
-  {
     path: '/notifications',
     name: 'Notifications',
     component: () => import('@/views/NotificationsView.vue'),
     meta: { requiresAuth: true }
+  },
+  // 👇 ВОТ ЭТО ВАЖНО – СТРАНИЦА ПОДТВЕРЖДЕНИЯ EMAIL
+  {
+    path: '/verify-email',
+    name: 'VerifyEmail',
+    component: () => import('@/views/VerifyEmailView.vue')
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/AboutView.vue')
+  },
+    {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/ForgotPasswordView.vue')
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('@/views/ResetPasswordView.vue')
+  },
+  {
+    path: '/verify-email',
+    name: 'VerifyEmail',
+    component: () => import('@/views/VerifyEmailView.vue')
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue')
   },
+  
 ]
 
 const router = createRouter({

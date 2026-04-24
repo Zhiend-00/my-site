@@ -1,7 +1,6 @@
 <template>
   <div class="forum-topic-page">
     <div class="container">
-      <!-- Заголовок темы -->
       <div class="topic-header">
         <button class="back-btn" @click="$router.back()">← Назад</button>
         <h1>{{ topic?.title }}</h1>
@@ -14,12 +13,7 @@
         <div v-if="topic?.is_locked" class="locked-badge">🔒 Тема закрыта</div>
       </div>
 
-      <!-- Список постов -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Загрузка сообщений...</p>
-      </div>
-
+      <div v-if="loading" class="loading-state">Загрузка...</div>
       <div v-else class="posts-list">
         <div v-for="(post, index) in posts" :key="post.id" class="post-card" :id="`post-${post.id}`">
           <div class="post-sidebar">
@@ -40,20 +34,19 @@
         </div>
       </div>
 
-      <!-- Форма ответа -->
-      <div v-if="authStore.isLoggedIn && !topic?.is_locked" class="reply-section">
+      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-warning">
+        <p>⚠️ Чтобы отвечать и ставить лайки, подтвердите Email.</p>
+        <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
+      </div>
+      <div v-else-if="authStore.isLoggedIn && !topic?.is_locked" class="reply-section">
         <h3>Ваш ответ</h3>
         <textarea v-model="replyContent" placeholder="Напишите ваш ответ..." rows="5" class="reply-input"></textarea>
         <button @click="submitReply" :disabled="!replyContent.trim() || submitting" class="submit-reply-btn">
           {{ submitting ? 'Отправка...' : '📤 Отправить ответ' }}
         </button>
       </div>
-
       <div v-else-if="!authStore.isLoggedIn" class="login-prompt">
-        <p>🔐 <router-link to="/login">Войдите</router-link> или <router-link to="/register">зарегистрируйтесь</router-link>, чтобы оставить ответ</p>
-      </div>
-      <div v-else-if="topic?.is_locked" class="locked-prompt">
-        <p>🔒 Эта тема закрыта для новых сообщений</p>
+        <router-link to="/login">Войдите</router-link> или <router-link to="/register">зарегистрируйтесь</router-link>
       </div>
     </div>
   </div>
@@ -61,12 +54,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { forumAPI } from '@/api';
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
 
 const topic = ref(null);
@@ -75,24 +67,13 @@ const loading = ref(true);
 const replyContent = ref('');
 const submitting = ref(false);
 
-const formatDate = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleDateString('ru-RU');
-};
-
-const formatDateTime = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleString('ru-RU');
-};
-
-const getInitials = (name) => {
-  return name?.charAt(0).toUpperCase() || '?';
-};
+const formatDate = (date) => date ? new Date(date).toLocaleDateString('ru-RU') : '';
+const formatDateTime = (date) => date ? new Date(date).toLocaleString('ru-RU') : '';
+const getInitials = (name) => name?.charAt(0).toUpperCase() || '?';
 
 const loadTopic = async () => {
   try {
-    const id = route.params.id;
-    const data = await forumAPI.getTopic(id);
+    const data = await forumAPI.getTopic(route.params.id);
     topic.value = data;
     posts.value = data.posts || [];
   } catch (err) {
@@ -104,19 +85,16 @@ const loadTopic = async () => {
 
 const submitReply = async () => {
   if (!replyContent.value.trim()) return;
+  if (!authStore.isLoggedIn) return;
+  if (!authStore.user.emailVerified) {
+    alert('Подтвердите email для участия в обсуждении');
+    return;
+  }
   submitting.value = true;
   try {
-    const newPost = await forumAPI.createPost({
-      topicId: route.params.id,
-      content: replyContent.value
-    });
-    posts.value.push(newPost);
+    const newPost = await forumAPI.createPost({ topicId: route.params.id, content: replyContent.value });
+    posts.value.push({ ...newPost, author_name: authStore.user.username, likes_count: 0 });
     replyContent.value = '';
-    // Прокрутка к новому посту
-    setTimeout(() => {
-      const lastPost = document.querySelector('.post-card:last-child');
-      lastPost?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   } catch (err) {
     console.error(err);
     alert('Ошибка отправки сообщения');
@@ -126,21 +104,23 @@ const submitReply = async () => {
 };
 
 const likePost = async (postId) => {
+  if (!authStore.isLoggedIn) return;
+  if (!authStore.user.emailVerified) {
+    alert('Подтвердите email для взаимодействия');
+    return;
+  }
   try {
     const result = await forumAPI.likePost(postId);
     const post = posts.value.find(p => p.id === postId);
-    if (post) {
-      post.likes_count = result.likes_count;
-    }
+    if (post) post.likes_count = result.likes_count;
   } catch (err) {
     console.error(err);
   }
 };
 
-onMounted(() => {
-  loadTopic();
-});
+onMounted(loadTopic);
 </script>
+
 
 <style scoped>
 .forum-topic-page {
@@ -339,5 +319,12 @@ onMounted(() => {
   .post-author-avatar {
     margin: 0;
   }
+}
+
+.verification-warning {
+  text-align: center; padding: 20px; background: #202020; border-radius: 8px; margin: 20px 0;
+}
+.verify-link {
+  background: #07660c; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 10px;
 }
 </style>

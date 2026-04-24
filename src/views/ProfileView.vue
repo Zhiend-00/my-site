@@ -1,13 +1,17 @@
 <template>
   <div class="profile-page">
     <div class="container">
-      <!-- Заголовок -->
       <div class="page-header">
         <h1>Профиль пользователя</h1>
         <p>Управление вашим аккаунтом</p>
       </div>
 
-      <!-- Основной контент -->
+      <!-- Баннер о неподтверждённом email -->
+      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="email-verify-banner">
+        <span>⚠️ Ваш Email не подтверждён. Некоторые функции ограничены.</span>
+        <router-link to="/verify-email" class="btn-primary">Подтвердить Email</router-link>
+      </div>
+
       <div class="profile-wrapper">
         <!-- Боковая панель -->
         <div class="profile-sidebar">
@@ -34,9 +38,17 @@
             <div class="user-info">
               <h3>{{ authStore.user?.username || 'Гость' }}</h3>
               <p class="user-email">{{ authStore.user?.email }}</p>
-              <p class="user-status" :class="{ verified: authStore.isEmailVerified }">
-                {{ authStore.isEmailVerified ? '✓ Email подтвержден' : '✗ Email не подтвержден' }}
+              <p class="user-status" :class="{ verified: authStore.user?.emailVerified }">
+                {{ authStore.user?.emailVerified ? '✓ Email подтвержден' : '✗ Email не подтвержден' }}
               </p>
+              <button
+                v-if="authStore.isLoggedIn && !authStore.user?.emailVerified"
+                @click="resendVerification"
+                :disabled="resending"
+                class="resend-btn"
+              >
+                {{ resending ? 'Отправка...' : 'Отправить письмо подтверждения' }}
+              </button>
             </div>
           </div>
 
@@ -103,8 +115,8 @@
                 <label>Email:</label>
                 <div class="info-value">
                   {{ authStore.user?.email }}
-                  <span class="email-status" :class="{ verified: authStore.isEmailVerified }">
-                    {{ authStore.isEmailVerified ? '✓' : '✗' }}
+                  <span class="email-status" :class="{ verified: authStore.user?.emailVerified }">
+                    {{ authStore.user?.emailVerified ? '✓' : '✗' }}
                   </span>
                 </div>
               </div>
@@ -208,11 +220,11 @@
                   <span>🔐</span> Изменить пароль
                 </button>
                 <button
-                  v-if="!authStore.isEmailVerified"
-                  @click="verifyEmail"
+                  v-if="!authStore.user?.emailVerified"
+                  @click="resendVerification"
                   class="settings-btn warning"
                 >
-                  <span>📧</span> Подтвердить Email
+                  <span>📧</span> Повторно отправить письмо подтверждения
                 </button>
               </div>
 
@@ -283,7 +295,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import { userMangaStatusAPI, progressAPI, mangaAPI, getCoverUrl as apiGetCoverUrl } from '@/api'
+import { userMangaStatusAPI, progressAPI, mangaAPI } from '@/api'
+import { authAPI } from '@/api'
+import { getCoverUrl } from '@/utils/imageHelper'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -317,6 +331,7 @@ const passwordForm = ref({
 // Аватар
 const avatarUrl = ref(null)
 const avatarInput = ref(null)
+const resending = ref(false)
 
 // Статусы закладок
 const bookmarkStatuses = [
@@ -336,7 +351,7 @@ const daysSinceRegistration = computed(() => {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 })
 
-// Методы
+// Вспомогательные методы
 const getInitials = (username) => {
   if (!username) return '?'
   return username.charAt(0).toUpperCase()
@@ -364,11 +379,6 @@ const formatRelativeDate = (dateString) => {
   return date.toLocaleDateString('ru-RU')
 }
 
-const getCoverUrl = (cover) => {
-  if (!cover) return '/placeholder.png'
-  return apiGetCoverUrl(cover)
-}
-
 const getStatusLabel = (status) => {
   const found = bookmarkStatuses.find((s) => s.value === status)
   return found ? found.label : status
@@ -378,22 +388,20 @@ const getBookmarksByStatus = (status) => {
   return userStatuses.value.filter((s) => s.status === status)
 }
 
-// Загрузка данных
+// Загрузка данных активности
 const loadUserActivity = async () => {
   if (!authStore.isLoggedIn) return
 
   try {
-    // Прогресс чтения (загружаем все, потом фильтруем по дате)
-    const progressData = await progressAPI.list() // предполагаем, что есть эндпоинт получения всего прогресса
-    // Фильтруем последние 3 дня
+    // Прогресс чтения
+    const progressData = await progressAPI.list()
+    totalChaptersRead.value = progressData?.length || 0
+
     const threeDaysAgo = new Date()
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-
     const filtered = (progressData || []).filter((p) => new Date(p.updatedAt) >= threeDaysAgo)
-
-    // Обогащаем информацией о манге
     const enriched = await Promise.all(
-      filtered.map(async (p) => {
+      filtered.slice(0, 10).map(async (p) => {
         try {
           const manga = await mangaAPI.get(p.mangaId)
           return {
@@ -407,9 +415,6 @@ const loadUserActivity = async () => {
       })
     )
     recentProgress.value = enriched
-
-    // Подсчёт прочитанных глав (всего)
-    totalChaptersRead.value = (progressData || []).length
   } catch (e) {
     console.warn('Не удалось загрузить прогресс', e)
     recentProgress.value = []
@@ -418,11 +423,8 @@ const loadUserActivity = async () => {
   try {
     // Статусы манги
     const statuses = await userMangaStatusAPI.get(authStore.user.id)
-    userStatuses.value = statuses || []
-
-    // Обогащаем информацией о манге
     const enrichedStatuses = await Promise.all(
-      userStatuses.value.map(async (s) => {
+      (statuses || []).map(async (s) => {
         try {
           const manga = await mangaAPI.get(s.mangaId)
           return {
@@ -436,11 +438,7 @@ const loadUserActivity = async () => {
       })
     )
     userStatuses.value = enrichedStatuses
-
-    // Избранное (favorites) — используем тот же API, но предполагаем что favorites отдельно
-    // В текущем API нет получения избранного, можно использовать список манги с статусом?
-    // Пока заглушка: используем статусы как избранное
-    favoriteMangaList.value = userStatuses.value
+    favoriteMangaList.value = enrichedStatuses
   } catch (e) {
     console.warn('Не удалось загрузить статусы', e)
     userStatuses.value = []
@@ -461,16 +459,25 @@ const handleAvatarChange = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
-  // В реальном приложении здесь загрузка на сервер через FormData
-  // Пока сохраняем в localStorage как base64
   const reader = new FileReader()
   reader.onload = (e) => {
     avatarUrl.value = e.target.result
     localStorage.setItem(`avatar_${authStore.user?.id}`, e.target.result)
-    // Здесь можно отправить на сервер
-    // await authAPI.updateAvatar(...)
   }
   reader.readAsDataURL(file)
+}
+
+// Повторная отправка письма подтверждения
+const resendVerification = async () => {
+  resending.value = true
+  try {
+    await authAPI.resendVerification()
+    alert('Письмо с подтверждением отправлено. Проверьте вашу почту.')
+  } catch (err) {
+    alert('Ошибка отправки: ' + (err.message || 'Неизвестная ошибка'))
+  } finally {
+    resending.value = false
+  }
 }
 
 // Модальные окна
@@ -489,7 +496,6 @@ const closeEditProfileModal = () => {
 const saveProfile = async () => {
   profileSaving.value = true
   try {
-    // Вызов API для обновления профиля (нужно реализовать в authAPI)
     // await authAPI.updateProfile(editProfileForm.value)
     alert('Функция обновления профиля в разработке')
     closeEditProfileModal()
@@ -530,10 +536,6 @@ const changePassword = async () => {
   }
 }
 
-const verifyEmail = () => {
-  router.push('/verify-email')
-}
-
 const logout = () => {
   authStore.logout()
   router.push('/')
@@ -562,6 +564,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Полный блок стилей (восстановлен) */
 .profile-page {
   min-height: calc(100vh - var(--header-height) - var(--footer-height));
   padding: var(--spacing-xl) 0;
@@ -582,6 +585,26 @@ onMounted(() => {
   color: var(--color-text);
   opacity: 0.8;
   font-size: 1.1rem;
+}
+
+.email-verify-banner {
+  background: rgba(255,165,0,0.15);
+  border: 1px solid #ffaa00;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 .profile-wrapper {
@@ -671,6 +694,22 @@ onMounted(() => {
 
 .user-status.verified {
   color: #00cc44;
+}
+
+.resend-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.resend-btn:disabled {
+  opacity: 0.5;
 }
 
 .profile-nav {

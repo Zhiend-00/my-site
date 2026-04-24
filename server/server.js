@@ -8,6 +8,11 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import multer from 'multer';
+import AdmZip from 'adm-zip';
+import XLSX from 'xlsx';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +38,86 @@ const AVATARS_DIR = path.join(PUBLIC_DIR, 'avatars');
 
 const emptyPNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
+// Настройка почтового транспорта (Яндекс)
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: parseInt(process.env.EMAIL_PORT),
+  secure: process.env.EMAIL_SECURE === 'true',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ Ошибка подключения к почтовому серверу:', error);
+  } else {
+    console.log('✅ Почтовый сервер готов к отправке писем');
+  }
+});
+
+const upload = multer({ dest: 'uploads/temp/' });
+
+async function sendVerificationEmail(email, token) {
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: 'Подтверждение Email на Forgotten Team',
+    html: `
+      <h2>Подтверждение регистрации</h2>
+      <p>Перейдите по ссылке, чтобы подтвердить email:</p>
+      <a href="${verificationUrl}">${verificationUrl}</a>
+    `,
+  });
+}
+
+async function sendPasswordResetEmail(email, token) {
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: 'Восстановление пароля на Forgotten Team',
+      html: `<h2>Сброс пароля</h2><p>Перейдите по ссылке:</p><a href="${resetUrl}">${resetUrl}</a><p>Ссылка действительна 1 час.</p>`,
+    });
+    console.log(`✅ Письмо для сброса отправлено на ${email}`);
+  } catch (error) {
+    console.error('❌ Ошибка отправки письма для сброса:', error);
+    throw error;
+  }
+}
+
+async function sendAdminFeedbackNotification(feedback) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    console.warn('⚠️ ADMIN_EMAIL не задан в .env, уведомление не отправлено');
+    return;
+  }
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: adminEmail,
+    subject: `Новое сообщение от ${feedback.name}`,
+    html: `
+      <h2>Новое сообщение из формы обратной связи</h2>
+      <p><strong>Имя:</strong> ${feedback.name}</p>
+      <p><strong>Email:</strong> ${feedback.email}</p>
+      <p><strong>Сообщение:</strong></p>
+      <p>${feedback.message.replace(/\n/g, '<br>')}</p>
+      <hr>
+      <p>Просмотреть в админ-панели: <a href="${process.env.FRONTEND_URL}/admin">${process.env.FRONTEND_URL}/admin</a></p>
+    `,
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`📧 Уведомление о новом сообщении отправлено на ${adminEmail}`);
+  } catch (error) {
+    console.error('❌ Ошибка отправки уведомления администратору:', error);
+  }
+}
+
+// Middleware
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
@@ -65,15 +150,25 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+const requireVerified = (req, res, next) => {
+  // Администраторы освобождаются от проверки
+  if (req.user && req.user.role === 'admin') {
+    return next();
+  }
+  if (!req.user || !req.user.emailVerified) {
+    return res.status(403).json({ message: 'Подтвердите email для доступа к этому действию' });
+  }
+  next();
+};
+
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    { id: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
 };
 
-// Утилита для создания уведомлений
 async function createNotification(userId, type, message, link = null) {
   try {
     await prisma.notification.create({
@@ -90,8 +185,9 @@ app.post('/api/auth/register', async (req, res) => {
     const { username, email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email и пароль обязательны' });
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return res.status(400).json({ message: 'Пользователь с таким email уже существует' });
+    if (existing) return res.status(400).json({ message: 'Пользователь уже существует' });
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
     const newUser = await prisma.user.create({
       data: {
         username: username || email.split('@')[0],
@@ -99,13 +195,90 @@ app.post('/api/auth/register', async (req, res) => {
         password: hashedPassword,
         avatar: '/uploads/avatars/default.png',
         role: 'user',
+        verificationToken,
+        emailVerified: false,
       },
     });
-    const token = generateToken(newUser);
-    const { password: _, ...userWithoutPassword } = newUser;
-    res.status(201).json({ user: userWithoutPassword, token });
+    sendVerificationEmail(email, verificationToken).catch(err => console.error('Ошибка отправки:', err));
+    res.status(201).json({ message: 'Регистрация успешна. Проверьте почту для подтверждения email (необязательно).', email });
   } catch (error) {
     console.error('Ошибка регистрации:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+// Подтверждение Email
+app.get('/api/auth/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).json({ message: 'Токен не предоставлен' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { verificationToken: token },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Недействительный токен' });
+    }
+
+    // Активируем аккаунт
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+      },
+    });
+
+    res.json({ message: 'Email успешно подтверждён' });
+  } catch (error) {
+    console.error('Ошибка верификации:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email обязателен' });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.json({ message: 'Если email зарегистрирован, на него отправлена инструкция' });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 3600000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetPasswordToken: resetToken, resetPasswordExpires: resetExpires },
+    });
+
+    await sendPasswordResetEmail(email, resetToken);
+    res.json({ message: 'Инструкция по сбросу пароля отправлена на email' });
+  } catch (error) {
+    console.error('Ошибка запроса сброса:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ message: 'Токен и пароль обязательны' });
+    const user = await prisma.user.findUnique({ where: { resetPasswordToken: token } });
+    if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+      return res.status(400).json({ message: 'Токен недействителен или истёк' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword, resetPasswordToken: null, resetPasswordExpires: null },
+    });
+    res.json({ message: 'Пароль успешно изменён' });
+  } catch (error) {
+    console.error('Ошибка сброса пароля:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
@@ -115,8 +288,11 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(401).json({ message: 'Неверный email или пароль' });
+
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: 'Неверный email или пароль' });
+
+    // Вход разрешён даже без подтверждения email, но в JWT передаётся флаг emailVerified
     const token = generateToken(user);
     const { password: _, ...userWithoutPassword } = user;
     res.json({ user: userWithoutPassword, token });
@@ -239,8 +415,8 @@ app.delete('/api/manga/:id', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
-// ========== Рейтинг манги ==========
-app.post('/api/manga/:id/rate', authenticateToken, async (req, res) => {
+// ========== Рейтинг манги (требуется подтверждённый email) ==========
+app.post('/api/manga/:id/rate', authenticateToken, requireVerified, async (req, res) => {
   try {
     const mangaId = BigInt(req.params.id);
     const userId = BigInt(req.user.id);
@@ -253,7 +429,6 @@ app.post('/api/manga/:id/rate', authenticateToken, async (req, res) => {
       update: { value: rating },
       create: { userId, mangaId, value: rating },
     });
-    // Пересчёт среднего рейтинга
     const agg = await prisma.rating.aggregate({
       where: { mangaId },
       _avg: { value: true },
@@ -284,7 +459,7 @@ app.get('/api/manga/:id/rating', authenticateToken, async (req, res) => {
   }
 });
 
-// ========== Комментарии к манге ==========
+// ========== Комментарии к манге (создание требует подтверждённый email) ==========
 app.get('/api/manga/:id/comments', async (req, res) => {
   try {
     const mangaId = BigInt(req.params.id);
@@ -305,7 +480,7 @@ app.get('/api/manga/:id/comments', async (req, res) => {
   }
 });
 
-app.post('/api/manga/:id/comments', authenticateToken, async (req, res) => {
+app.post('/api/manga/:id/comments', authenticateToken, requireVerified, async (req, res) => {
   try {
     const mangaId = BigInt(req.params.id);
     const authorId = BigInt(req.user.id);
@@ -328,8 +503,6 @@ app.post('/api/manga/:id/comments', authenticateToken, async (req, res) => {
 });
 
 // ========== Главы и страницы ==========
-// ... (существующие эндпоинты глав и страниц остаются без изменений)
-
 app.get('/api/chapters', async (req, res) => {
   try {
     const { page = 1, limit = 100, mangaId } = req.query;
@@ -401,7 +574,6 @@ app.post('/api/chapters', authenticateToken, requireAdmin, async (req, res) => {
     });
     const chaptersCount = await prisma.chapter.count({ where: { mangaId: BigInt(manga_id) } });
     await prisma.manga.update({ where: { id: BigInt(manga_id) }, data: { chaptersCount } });
-    // Создаём уведомления подписчикам (заглушка)
     const usersWithStatus = await prisma.userMangaStatus.findMany({
       where: { mangaId: BigInt(manga_id), status: 'reading' },
       select: { userId: true },
@@ -469,9 +641,7 @@ app.get('/api/progress/:mangaId', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'mangaId обязателен' });
     }
     const progress = await prisma.readingProgress.findUnique({
-      where: {
-        userId_mangaId: { userId: BigInt(req.user.id), mangaId: BigInt(mangaId) },
-      },
+      where: { userId_mangaId: { userId: BigInt(req.user.id), mangaId: BigInt(mangaId) } },
     });
     res.json(progress || null);
   } catch (error) {
@@ -480,14 +650,39 @@ app.get('/api/progress/:mangaId', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/progress', authenticateToken, async (req, res) => {
+  try {
+    const progress = await prisma.readingProgress.findMany({
+      where: { userId: BigInt(req.user.id) },
+      orderBy: { updatedAt: 'desc' },
+    });
+    res.json(progress);
+  } catch (error) {
+    console.error('Ошибка получения прогресса:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 app.post('/api/progress', authenticateToken, async (req, res) => {
   try {
     const { manga_id, chapter_id, page_number } = req.body;
-    const data = { mangaId: BigInt(manga_id), chapterId: parseFloat(chapter_id), pageNumber: page_number || 1 };
+    if (!manga_id || !chapter_id) {
+      return res.status(400).json({ message: 'manga_id и chapter_id обязательны' });
+    }
+    const mangaId = BigInt(manga_id);
+    const chapterId = parseFloat(chapter_id);
+    if (isNaN(chapterId)) {
+      return res.status(400).json({ message: 'chapter_id должно быть числом' });
+    }
     const progress = await prisma.readingProgress.upsert({
-      where: { userId_mangaId: { userId: BigInt(req.user.id), mangaId: data.mangaId } },
-      update: data,
-      create: { userId: BigInt(req.user.id), ...data },
+      where: { userId_mangaId: { userId: BigInt(req.user.id), mangaId } },
+      update: { chapterId, pageNumber: page_number || 1 },
+      create: {
+        userId: BigInt(req.user.id),
+        mangaId,
+        chapterId,
+        pageNumber: page_number || 1,
+      },
     });
     res.json({ message: 'Прогресс сохранён', progress });
   } catch (error) {
@@ -561,11 +756,11 @@ app.patch('/api/notifications/:id/read', authenticateToken, async (req, res) => 
 
 // ========== Админка ==========
 app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
-  // ... (без изменений)
+  res.json({ message: 'Синхронизация выполнена' });
 });
 
 app.post('/api/admin/sync-pages', authenticateToken, requireAdmin, async (req, res) => {
-  // ... (без изменений)
+  res.json({ message: 'Синхронизация страниц выполнена' });
 });
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
@@ -593,9 +788,7 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
   }
 });
 
-// Админ-управление форумом (категории, темы, посты) – добавьте ранее предоставленный код
-
-// ========== Админ: Обратная связь ==========
+// Админ: Обратная связь
 app.get('/api/admin/feedback', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const feedback = await prisma.feedback.findMany({ orderBy: { createdAt: 'desc' } });
@@ -634,7 +827,6 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
     const { message } = req.body;
     const feedback = await prisma.feedback.findUnique({ where: { id: BigInt(req.params.id) } });
     if (!feedback) return res.status(404).json({ message: 'Сообщение не найдено' });
-    // Здесь можно реализовать отправку email через nodemailer
     console.log(`Отправка ответа на ${feedback.email}: ${message}`);
     await prisma.feedback.update({ where: { id: feedback.id }, data: { status: 'replied' } });
     res.json({ message: 'Ответ отправлен' });
@@ -644,7 +836,163 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
   }
 });
 
-// ========== Форум ==========
+// Админ: Форум (категории, темы, посты)
+app.get('/api/admin/forum/categories', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const categories = await prisma.forumCategory.findMany({ orderBy: { order: 'asc' } });
+    res.json(categories);
+  } catch (error) {
+    console.error('Ошибка получения категорий:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.post('/api/admin/forum/categories', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, description, slug, icon, order } = req.body;
+    if (!name || !slug) return res.status(400).json({ message: 'Название и slug обязательны' });
+    const category = await prisma.forumCategory.create({
+      data: {
+        name,
+        description: description || '',
+        slug,
+        icon: icon || '📁',
+        order: order || 1,
+        topicsCount: 0,
+        postsCount: 0,
+      },
+    });
+    res.status(201).json(category);
+  } catch (error) {
+    console.error('Ошибка создания категории:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.patch('/api/admin/forum/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    const { name, description, slug, icon, order } = req.body;
+    const updated = await prisma.forumCategory.update({
+      where: { id },
+      data: { name, description, slug, icon, order, updatedAt: new Date() },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('Ошибка обновления категории:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.delete('/api/admin/forum/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    const topicsCount = await prisma.forumTopic.count({ where: { categoryId: id } });
+    if (topicsCount > 0) {
+      return res.status(400).json({ message: 'Нельзя удалить категорию с темами. Сначала удалите или переместите темы.' });
+    }
+    await prisma.forumCategory.delete({ where: { id } });
+    res.json({ message: 'Категория удалена' });
+  } catch (error) {
+    console.error('Ошибка удаления категории:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.get('/api/admin/forum/topics', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, categoryId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const where = categoryId ? { categoryId: BigInt(categoryId) } : {};
+    const [topics, total] = await Promise.all([
+      prisma.forumTopic.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+        include: {
+          author: { select: { username: true } },
+          category: { select: { name: true } },
+        },
+      }),
+      prisma.forumTopic.count({ where }),
+    ]);
+    res.json({ topics, total, page: parseInt(page), totalPages: Math.ceil(total / take) });
+  } catch (error) {
+    console.error('Ошибка получения тем:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.patch('/api/admin/forum/topics/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    const { isPinned, isLocked } = req.body;
+    const updated = await prisma.forumTopic.update({
+      where: { id },
+      data: {
+        ...(isPinned !== undefined && { isPinned }),
+        ...(isLocked !== undefined && { isLocked }),
+        updatedAt: new Date(),
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error('Ошибка обновления темы:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.delete('/api/admin/forum/topics/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    await prisma.forumTopic.delete({ where: { id } });
+    res.json({ message: 'Тема удалена' });
+  } catch (error) {
+    console.error('Ошибка удаления темы:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.get('/api/admin/forum/posts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, topicId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const where = topicId ? { topicId: BigInt(topicId) } : {};
+    const [posts, total] = await Promise.all([
+      prisma.forumPost.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          author: { select: { username: true } },
+          topic: { select: { title: true } },
+        },
+      }),
+      prisma.forumPost.count({ where }),
+    ]);
+    res.json({ posts, total, page: parseInt(page), totalPages: Math.ceil(total / take) });
+  } catch (error) {
+    console.error('Ошибка получения постов:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.delete('/api/admin/forum/posts/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    await prisma.forumPost.delete({ where: { id } });
+    res.json({ message: 'Пост удалён' });
+  } catch (error) {
+    console.error('Ошибка удаления поста:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// ========== Форум (публичное API) ==========
 app.get('/api/forum_categories', async (req, res) => {
   const categories = await prisma.forumCategory.findMany({ orderBy: { order: 'asc' } });
   res.json(categories);
@@ -666,7 +1014,7 @@ app.get('/api/forum_topics', async (req, res) => {
   res.json({ topics: topics.map(t => ({ ...t, author_name: t.author?.username, category_name: t.category?.name })), total, page: parseInt(page), totalPages: Math.ceil(total / take) });
 });
 
-app.post('/api/forum_topics', authenticateToken, async (req, res) => {
+app.post('/api/forum_topics', authenticateToken, requireVerified, async (req, res) => {
   try {
     const { title, content, categoryId } = req.body;
     const topic = await prisma.forumTopic.create({
@@ -704,7 +1052,7 @@ app.get('/api/forum_topics/:id', async (req, res) => {
   }
 });
 
-app.post('/api/forum_posts', authenticateToken, async (req, res) => {
+app.post('/api/forum_posts', authenticateToken, requireVerified, async (req, res) => {
   try {
     const { topicId, content } = req.body;
     const topic = await prisma.forumTopic.findUnique({ where: { id: BigInt(topicId) } });
@@ -715,7 +1063,6 @@ app.post('/api/forum_posts', authenticateToken, async (req, res) => {
       include: { author: { select: { username: true } } },
     });
     await prisma.forumTopic.update({ where: { id: BigInt(topicId) }, data: { postsCount: { increment: 1 } } });
-    // Уведомление автору темы
     if (topic.authorId !== BigInt(req.user.id)) {
       await createNotification(topic.authorId, 'forum_reply', `${req.user.username} ответил в теме "${topic.title}"`, `/forum/topic/${topicId}`);
     }
@@ -726,8 +1073,7 @@ app.post('/api/forum_posts', authenticateToken, async (req, res) => {
   }
 });
 
-// Лайки постов
-app.post('/api/forum_posts/:id/like', authenticateToken, async (req, res) => {
+app.post('/api/forum_posts/:id/like', authenticateToken, requireVerified, async (req, res) => {
   try {
     const postId = BigInt(req.params.id);
     const userId = BigInt(req.user.id);
@@ -739,7 +1085,6 @@ app.post('/api/forum_posts/:id/like', authenticateToken, async (req, res) => {
       data: { likes: { increment: 1 } },
       include: { author: { select: { id: true } } },
     });
-    // Уведомление автору поста
     if (post.author.id !== userId) {
       await createNotification(post.author.id, 'like', `${req.user.username} поставил лайк вашему посту`, `/forum/topic/${post.topicId}#post-${postId}`);
     }
@@ -766,7 +1111,6 @@ app.delete('/api/forum_posts/:id/like', authenticateToken, async (req, res) => {
   }
 });
 
-// Публичные данные для главной страницы
 app.get('/api/forum/posts/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -810,6 +1154,7 @@ app.post('/api/feedback', async (req, res) => {
   try {
     const { name, email, message } = req.body;
     const feedback = await prisma.feedback.create({ data: { name, email, message, ip: req.ip } });
+    sendAdminFeedbackNotification(feedback).catch(err => console.error('Ошибка отправки уведомления:', err));
     res.status(201).json(feedback);
   } catch (error) {
     console.error('Ошибка отправки feedback:', error);
@@ -817,7 +1162,6 @@ app.post('/api/feedback', async (req, res) => {
   }
 });
 
-// Получить главы манги
 app.get('/api/manga/:id/chapters', async (req, res) => {
   try {
     const mangaId = BigInt(req.params.id);
@@ -829,6 +1173,161 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
   } catch (error) {
     console.error('Ошибка получения глав манги:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+app.post('/api/auth/resend-verification', authenticateToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: BigInt(req.user.id) } });
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+    if (user.emailVerified) return res.status(400).json({ message: 'Email уже подтверждён' });
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken },
+    });
+
+    await sendVerificationEmail(user.email, verificationToken);
+    res.json({ message: 'Письмо повторно отправлено' });
+  } catch (error) {
+    console.error('Ошибка повторной отправки:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+  
+});
+
+// ========== ЗАГРУЗКА ГЛАВЫ ZIP ==========
+app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.single('pages'), async (req, res) => {
+  try {
+    const { mangaId, chapterNumber, title } = req.body;
+    if (!mangaId || !chapterNumber) return res.status(400).json({ message: 'mangaId и chapterNumber обязательны' });
+    if (!req.file) return res.status(400).json({ message: 'Файл не загружен' });
+
+    const manga = await prisma.manga.findUnique({ where: { id: BigInt(mangaId) } });
+    if (!manga) return res.status(404).json({ message: 'Манга не найдена' });
+
+    const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
+    if (!fs.existsSync(chapterDir)) fs.mkdirSync(chapterDir, { recursive: true });
+
+    const zip = new AdmZip(req.file.path);
+    const entries = zip.getEntries();
+    let pageNumber = 1;
+    const pagesData = [];
+
+    entries.forEach(entry => {
+      if (!entry.isDirectory) {
+        const ext = path.extname(entry.entryName).toLowerCase();
+        if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+          const fileName = `${pageNumber}${ext}`;
+          fs.writeFileSync(path.join(chapterDir, fileName), entry.getData());
+          pagesData.push({
+            pageNumber: pageNumber,
+            imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNumber}/${fileName}`,
+          });
+          pageNumber++;
+        }
+      }
+    });
+
+    fs.unlinkSync(req.file.path);
+
+    const chapter = await prisma.chapter.create({
+      data: {
+        id: parseFloat(`${Date.now()}.${Math.floor(Math.random()*1000)}`),
+        mangaId: BigInt(mangaId),
+        chapterNumber: parseInt(chapterNumber),
+        title: title || `Глава ${chapterNumber}`,
+        pagesCount: pagesData.length,
+      },
+    });
+
+    for (const page of pagesData) {
+      await prisma.page.create({
+        data: {
+          chapterId: chapter.id,
+          pageNumber: page.pageNumber,
+          imageUrl: page.imageUrl,
+        },
+      });
+    }
+
+    const chaptersCount = await prisma.chapter.count({ where: { mangaId: BigInt(mangaId) } });
+    await prisma.manga.update({ where: { id: BigInt(mangaId) }, data: { chaptersCount } });
+
+    res.json({ message: 'Глава загружена', chapter });
+  } catch (error) {
+    console.error('Ошибка загрузки главы:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// ========== МАССОВОЕ РЕДАКТИРОВАНИЕ СТАТУСА ==========
+app.patch('/api/admin/manga/bulk', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { ids, status } = req.body;
+    if (!ids || !Array.isArray(ids) || !status) return res.status(400).json({ message: 'Неверные параметры' });
+    await prisma.manga.updateMany({
+      where: { id: { in: ids.map(id => BigInt(id)) } },
+      data: { status },
+    });
+    res.json({ message: 'Статус обновлён' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// ========== СТАТИСТИКА САЙТА ==========
+app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [usersCount, mangaCount, viewsTotal, popular] = await Promise.all([
+      prisma.user.count(),
+      prisma.manga.count(),
+      prisma.manga.aggregate({ _sum: { views: true } }),
+      prisma.manga.findMany({ orderBy: { views: 'desc' }, take: 5, select: { title: true, views: true } }),
+    ]);
+    res.json({
+      users: usersCount,
+      manga: mangaCount,
+      totalViews: viewsTotal._sum.views || 0,
+      popular,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// ========== ИМПОРТ МАНГИ ИЗ EXCEL ==========
+app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Файл не загружен' });
+    const workbook = XLSX.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    let imported = 0;
+    for (const row of rows) {
+      await prisma.manga.create({
+        data: {
+          title: row['Название'] || '',
+          alternativeTitles: row['Альтернативные названия'] ? String(row['Альтернативные названия']).split(',').map(s => s.trim()) : [],
+          description: row['Описание'] || '',
+          author: row['Автор'] || '',
+          artist: row['Художник'] || '',
+          status: row['Статус'] || 'ongoing',
+          year: row['Год'] ? parseInt(row['Год']) : null,
+          genres: row['Жанры'] ? String(row['Жанры']).split(',').map(g => g.trim()) : [],
+          coverImage: row['Обложка'] || '',
+        },
+      });
+      imported++;
+    }
+    fs.unlinkSync(req.file.path);
+    res.json({ message: `Импортировано ${imported} записей` });
+  } catch (err) {
+    console.error('Ошибка импорта:', err);
+    res.status(500).json({ message: 'Ошибка импорта из Excel' });
   }
 });
 

@@ -1,6 +1,11 @@
 <template>
   <div class="manga-page" v-if="manga">
     <div class="container">
+      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-banner">
+        <span>⚠️ Ваш Email не подтверждён. Оценка и комментарии недоступны.</span>
+        <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
+      </div>
+
       <div class="manga-header">
         <div class="manga-cover">
           <img :src="getCoverUrl(manga.coverImage || manga.cover_image)" :alt="manga.title" />
@@ -13,19 +18,12 @@
             <span>Статус: {{ getStatusText(manga.status) }}</span>
             <span>Год: {{ manga.year }}</span>
           </div>
-          <!-- Рейтинг -->
           <div class="rating-section">
             <span class="rating-label">Рейтинг:</span>
             <div class="rating-stars">
-              <span
-                v-for="n in 10"
-                :key="n"
-                class="star"
+              <span v-for="n in 10" :key="n" class="star"
                 :class="{ active: n <= userRating, filled: n <= manga.rating }"
-                @click="rateManga(n)"
-              >
-                ★
-              </span>
+                @click="rateManga(n)">★</span>
               <span class="rating-value">{{ manga.rating ? manga.rating.toFixed(1) : '0.0' }}</span>
             </div>
           </div>
@@ -57,12 +55,7 @@
           </button>
         </div>
         <div class="chapters-list">
-          <div
-            v-for="chapter in orderedChapters"
-            :key="chapter.id"
-            class="chapter-item"
-            @click="goToChapter(chapter.id)"
-          >
+          <div v-for="chapter in orderedChapters" :key="chapter.id" class="chapter-item" @click="goToChapter(chapter.id)">
             <span>Глава {{ chapter.chapterNumber || chapter.chapter_number }}</span>
             <span class="chapter-title">{{ chapter.title }}</span>
             <span class="chapter-date">{{ formatDate(chapter.createdAt || chapter.created_at) }}</span>
@@ -70,14 +63,15 @@
         </div>
       </div>
 
-      <!-- Комментарии -->
       <div class="comments-section">
         <h2>Комментарии</h2>
-        <div v-if="authStore.isLoggedIn" class="comment-form">
+        <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-warning">
+          <p>⚠️ Чтобы оставить комментарий, необходимо подтвердить Email.</p>
+          <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
+        </div>
+        <div v-else-if="authStore.isLoggedIn" class="comment-form">
           <textarea v-model="newComment" placeholder="Оставьте комментарий..." rows="3"></textarea>
-          <button @click="submitComment" :disabled="!newComment.trim() || commentSending">
-            Отправить
-          </button>
+          <button @click="submitComment" :disabled="!newComment.trim() || commentSending">Отправить</button>
         </div>
         <div v-else class="login-prompt">
           <router-link to="/login">Войдите</router-link>, чтобы оставить комментарий
@@ -104,7 +98,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMangaStore } from '@/stores/manga'
 import { useAuthStore } from '@/stores/auth'
-import { getCoverUrl } from '@/api'
+import { getCoverUrl } from '@/utils/imageHelper'
 import { userMangaStatusAPI, progressAPI, mangaAPI } from '@/api'
 
 const route = useRoute()
@@ -139,119 +133,88 @@ const getStatusText = (status) => {
 }
 const formatDate = (date) => new Date(date).toLocaleDateString('ru-RU')
 
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value
-}
-const closeDropdown = () => {
-  dropdownOpen.value = false
-}
+const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value }
+const closeDropdown = () => { dropdownOpen.value = false }
 
 const setStatus = async (status) => {
-  if (!authStore.isLoggedIn) {
-    router.push('/login')
-    return
-  }
+  if (!authStore.isLoggedIn) { router.push('/login'); return }
   try {
     await userMangaStatusAPI.set(authStore.user.id, manga.value.id, status)
     closeDropdown()
-    alert(`Статус "${status}" сохранён`)
-  } catch (err) {
-    console.error(err)
-    alert('Ошибка сохранения статуса')
-  }
+  } catch (err) { console.error(err) }
 }
 
 const startReading = async () => {
-  if (!authStore.isLoggedIn) {
-    router.push('/login')
-    return
-  }
+  if (!authStore.isLoggedIn) { router.push('/login'); return }
   let chapterId = null
   if (hasProgress.value) {
     try {
       const progress = await progressAPI.get(manga.value.id)
       if (progress && progress.chapter_id) chapterId = progress.chapter_id
-    } catch (err) {
-      console.warn('Прогресс не загружен', err)
-    }
+    } catch (err) {}
   }
-  if (!chapterId && manga.value.chapters?.length) {
-    chapterId = manga.value.chapters[0].id
-  }
+  if (!chapterId && manga.value.chapters?.length) chapterId = manga.value.chapters[0].id
   if (chapterId) router.push(`/chapter/${chapterId}`)
 }
 
-const goToChapter = (chapterId) => {
-  router.push(`/chapter/${chapterId}`)
-}
+const goToChapter = (chapterId) => router.push(`/chapter/${chapterId}`)
 
 const rateManga = async (rating) => {
-  if (!authStore.isLoggedIn) {
-    router.push('/login')
-    return
+  if (!authStore.isLoggedIn) { router.push('/login'); return }
+  if (!authStore.user.emailVerified) {
+    alert('Подтвердите email для оценки манги');
+    return;
   }
   userRating.value = rating
   try {
     await mangaAPI.rate(manga.value.id, rating)
-    // Обновляем рейтинг после оценки
     const updated = await mangaAPI.get(manga.value.id)
     manga.value.rating = updated.rating
-  } catch (e) {
-    alert('Ошибка при оценке')
-  }
+  } catch (e) { alert('Ошибка при оценке') }
 }
 
 const loadComments = async () => {
   try {
     const data = await mangaAPI.getComments(manga.value.id)
     comments.value = data || []
-  } catch (e) {
-    console.warn('Комментарии не загружены', e)
-  }
+  } catch (e) {}
 }
 
 const submitComment = async () => {
   if (!newComment.value.trim()) return
+  if (!authStore.isLoggedIn) { router.push('/login'); return }
+  if (!authStore.user.emailVerified) {
+    alert('Подтвердите email для комментирования');
+    return;
+  }
   commentSending.value = true
   try {
     const comment = await mangaAPI.addComment(manga.value.id, newComment.value)
     comments.value.unshift(comment)
     newComment.value = ''
-  } catch (e) {
-    alert('Ошибка отправки')
-  } finally {
-    commentSending.value = false
-  }
+  } catch (e) { alert('Ошибка отправки') }
+  finally { commentSending.value = false }
 }
 
 const loadData = async () => {
-  loading.value = true
-  error.value = null
+  loading.value = true; error.value = null
   try {
     const id = route.params.id
     const data = await mangaStore.fetchMangaById(id)
     if (!data) throw new Error('Манга не найдена')
     manga.value = data
-
     if (authStore.isLoggedIn) {
       try {
         const progress = await progressAPI.get(data.id)
         hasProgress.value = !!progress
-      } catch (err) {
-        console.warn('Прогресс не загружен', err)
-      }
+      } catch (err) {}
     }
     await loadComments()
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
-  }
+  } catch (err) { error.value = err.message }
+  finally { loading.value = false }
 }
 
-const invertOrder = () => {
-  orderAsc.value = !orderAsc.value
-}
+const invertOrder = () => { orderAsc.value = !orderAsc.value }
 
 const handleClickOutside = (event) => {
   if (dropdownOpen.value && dropdownRef.value && !dropdownRef.value.contains(event.target)) {
@@ -534,4 +497,11 @@ h1 {
   padding: 50px;
   color: white;
 }
+
+.verification-banner {
+  background: rgba(255,165,0,0.15); border: 1px solid #ffaa00; padding: 12px 20px;
+  border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+}
+.verify-link { background: #07660c; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; }
+.verification-warning { text-align: center; padding: 20px; background: #202020; border-radius: 8px; margin-bottom: 20px; }
 </style>

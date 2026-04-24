@@ -27,7 +27,7 @@ CREATE TABLE manga (
     year INTEGER,
     genres TEXT[],
     views INTEGER DEFAULT 0,
-    rating DECIMAL(3,2),
+    rating DECIMAL(4,2) DEFAULT 0,   -- было (3,2), теперь вмещает 10.00
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

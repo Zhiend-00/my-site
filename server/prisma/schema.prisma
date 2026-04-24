@@ -15,7 +15,13 @@ model User {
   password         String
   avatar           String?            @default("/uploads/avatars/default.png")
   role             String             @default("user")
-  emailVerified    Boolean            @default(false)
+  
+  // Новые поля для верификации и сброса пароля
+  emailVerified      Boolean            @default(false)
+  verificationToken  String?            @unique
+  resetPasswordToken String?            @unique
+  resetPasswordExpires DateTime?
+  
   createdAt        DateTime           @default(now())    @map("created_at")
   updatedAt        DateTime           @updatedAt         @map("updated_at")
   
@@ -26,7 +32,6 @@ model User {
   forumPosts       ForumPost[]
   feedbacks        Feedback[]
   
-  // Новые связи
   ratings          Rating[]
   mangaComments    MangaComment[]
   forumPostLikes   ForumPostLike[]
