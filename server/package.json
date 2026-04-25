@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:push": "prisma db push",
     "migrate-data": "node migrate-data.js",
-    "build": "npx prisma generate",
+    "build": "echo 'build done",
     "postinstall": "npx prisma generate"
   },
   "dependencies": {
