@@ -1,5 +1,5 @@
 {
-  "name": "manga-server",
+  "name": "server",
   "version": "2.0.0",
   "description": "Express + PostgreSQL backend for manga site",
   "main": "server.js",
@@ -29,6 +29,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "@prisma/client": "^5.0.0",
+    "prisma": "^5.0.0"
+  },
+  "engines": {
+  "node": ">=18.0.0"
   }
 }
