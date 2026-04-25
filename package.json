@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "start": "node index.js"
+    "preview": "serve -s dist -l 4173"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.0",
