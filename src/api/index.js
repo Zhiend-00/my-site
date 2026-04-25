@@ -1,8 +1,10 @@
 // src/api/index.js
 import axios from 'axios'
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  baseURL: API_BASE
 })
 
 function getToken() {
@@ -90,7 +92,7 @@ export const userMangaStatusAPI = {
 export const progressAPI = {
   save: (data) => request('/progress', { method: 'POST', body: JSON.stringify(data) }),
   get: (mangaId) => request(`/progress/${mangaId}`),
-  list: () => request('/progress'),   // <-- должен быть
+  list: () => request('/progress'),
 };
 
 export const favoritesAPI = {
@@ -138,13 +140,13 @@ export const adminAPI = {
 };
 
 export const getCoverUrl = (coverPath) => {
-  if (!coverPath) return 'http://localhost:3000/api/cover/default';
+  if (!coverPath) return `${API_BASE}/api/cover/default`;
   if (coverPath.startsWith('http')) return coverPath;
   if (coverPath.startsWith('/api/cover')) {
-    return `http://localhost:3000${coverPath}`;
+    return `${API_BASE}${coverPath}`;
   }
   if (!isNaN(parseInt(coverPath))) {
-    return `http://localhost:3000/api/cover/${coverPath}`;
+    return `${API_BASE}/api/cover/${coverPath}`;
   }
-  return 'http://localhost:3000/api/cover/default';
+  return `${API_BASE}/api/cover/default`;
 };
