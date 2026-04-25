@@ -1,5 +1,7 @@
 // src/api/index.js
-const API_BASE = 'http://localhost:3000/api';
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000'
+})
 
 function getToken() {
   return localStorage.getItem('token');
