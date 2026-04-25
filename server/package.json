@@ -12,8 +12,7 @@
     "prisma:push": "prisma db push",
     "migrate-data": "node migrate-data.js",
     "build": "npx prisma generate",
-    "postinstall": "npx prisma generate",
-    "start": "node server.js"
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
