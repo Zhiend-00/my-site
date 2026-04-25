@@ -49,13 +49,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Ошибка подключения к почтовому серверу:', error);
-  } else {
-    console.log('✅ Почтовый сервер готов к отправке писем');
-  }
-}); 
+
 
 const upload = multer({ dest: 'uploads/temp/' });
 
@@ -119,7 +113,7 @@ async function sendAdminFeedbackNotification(feedback) {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://capable-gentleness-production-3388.up.railway.app'],
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
