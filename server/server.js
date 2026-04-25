@@ -1333,5 +1333,5 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
 
 // ========== Запуск ==========
 app.listen(PORT, () => {
-  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
