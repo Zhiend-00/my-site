@@ -55,7 +55,7 @@ transporter.verify((error, success) => {
   } else {
     console.log('✅ Почтовый сервер готов к отправке писем');
   }
-});
+}); 
 
 const upload = multer({ dest: 'uploads/temp/' });
 
