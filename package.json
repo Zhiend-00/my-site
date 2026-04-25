@@ -10,8 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node index.js",
-    "build": "echo 'no build step'" 
+    "start": "node index.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.0",

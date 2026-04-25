@@ -13,9 +13,9 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "jsxImportSource": "vue"
   },
   "include": ["src/**/*"],  // ← упрощено
-  "exclude": ["node_modules", "dist", "**/*.test.js"],
-  "jsxImportSource": "vue"
+  "exclude": ["node_modules", "dist", "**/*.test.js"]
 }
