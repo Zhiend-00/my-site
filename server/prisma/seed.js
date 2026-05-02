@@ -144,9 +144,17 @@ async function main() {
     console.log('✅ Категории форума');
   }
 
-  // Темы форума
+
+    // Темы форума
   if (data.forum_topics) {
     for (const t of data.forum_topics) {
+      // Пропускаем темы без обязательных полей
+      const categoryId = t.category_id || t.categoryId;
+      const authorId = t.author_id;
+      if (!categoryId || !authorId) {
+        console.warn(`⚠️ Пропущена тема "${t.title}" — нет category_id или author_id`);
+        continue;
+      }
       await prisma.forumTopic.upsert({
         where: { id: BigInt(t.id) },
         update: {
@@ -157,10 +165,10 @@ async function main() {
         },
         create: {
           id: BigInt(t.id),
-          categoryId: BigInt(t.category_id || t.categoryId),
+          categoryId: BigInt(categoryId),
           title: t.title,
           content: t.content,
-          authorId: BigInt(t.author_id),
+          authorId: BigInt(authorId),
           views: t.views || 0,
           postsCount: t.posts_count || 0,
           isPinned: t.is_pinned || false,
