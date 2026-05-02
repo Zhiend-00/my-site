@@ -17,9 +17,9 @@ import XLSX from 'xlsx';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-//BigInt.prototype.toJSON = function() { //
-  //return this.toString(); //
-//};//
+BigInt.prototype.toJSON = function() { 
+  return this.toString(); 
+};
 
 const prisma = new PrismaClient();
 const app = express();
