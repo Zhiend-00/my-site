@@ -1,0 +1,483 @@
+
+	{
+  "manga": [
+    {
+      "id": 1,
+      "title": "О моем перерождении в меч",
+      "alternative_titles": [
+        "Tensei Shitara Ken deshita",
+        " 転生したら剣でした"
+      ],
+      "description": "Я стал мечом…ЧТОО!? Как это произошло? Я ничего не понимаю! ...",
+      "cover_image": "/uploads/covers/cover-1.png",
+      "author": "TANAKA Yuu",
+      "artist": "TANAKA Yuu",
+      "status": "ongoing",
+      "year": 2016,
+      "genres": [
+        "Экшен",
+        "Фэнтези",
+        "Сёнэн",
+        "Реинкарнация"
+      ],
+      "rating": 9.5,
+      "views": 1250000,
+      "chapters_count": 2,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "updated_at": "2026-04-04T06:06:58.122Z"
+    },
+    {
+      "id": 2,
+      "title": "Лунный бог, приключение и другой мир",
+      "alternative_titles": [
+        "BTsuki ga Michibiku Isekai Douchuu",
+        "月が導く異世界道中"
+      ],
+      "description": "Обычный японский школьник Мисуми Макото до определённого момента не знал, что его родители заключили договор с богиней из другого мира...",
+      "cover_image": "/uploads/covers/cover-2.png",
+      "author": "AZUMI Kei",
+      "artist": "AZUMI Kei",
+      "status": "ongoing",
+      "year": 2015,
+      "genres": [
+        "Гарем",
+        "Фэнтези",
+        "Боги",
+        "Приключения"
+      ],
+      "rating": 9.3,
+      "views": 3500000,
+      "chapters_count": 2,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "updated_at": "2026-04-04T06:06:58.759Z"
+    },
+    {
+      "id": 3,
+      "title": "Меня выгнали из пати героя, потому что им не нужны мои навыки обучения, поэтому я улучшил своё [поместье], которое я приобрел за мои военные заслуги.",
+      "alternative_titles": [
+        "Ikusei Skill wa Mou Iranai to Yuusha Party o Kaiko Sareta no de, Taishoku Kingawari ni Moratta “Ryouchi” o Tsuyoku Shitemiru",
+        "育成スキルはもういらないと勇者パーティを解雇されたので、退職金がわりにもらった【領地】を強くしてみる"
+      ],
+      "description": "Будто бы я 27 летний, который специализируется в обучении больше был не пригоден для героя, которое стало выше в ранге. По началу я был центром команды, но в конце, герой выгнал меня...",
+      "cover_image": "/uploads/covers/cover-3.png",
+      "author": "Kuro Ouji",
+      "artist": "Kuro Ouji",
+      "status": "completed",
+      "year": 2020,
+      "genres": [
+        "Гарем",
+        "Боевик",
+        "Комедия",
+        "Сёнэн"
+      ],
+      "rating": 9.1,
+      "views": 2800000,
+      "chapters_count": 2,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "updated_at": "2026-04-04T06:06:58.858Z"
+    },
+    {
+      "id": 4,
+      "title": "Приди же в Мир Демонов, Ирума-кун!",
+      "description": "Четырнадцатилетний Судзуки Ирума только что был брошен и продан демону его безответственными родителями! ...",
+      "cover_image": "/uploads/covers/cover-4.png",
+      "author": "Осаму Ниси",
+      "status": "ongoing",
+      "year": 2017,
+      "genres": [
+        "Демоны",
+        "Исекай",
+        "Комедия",
+        "Школа"
+      ],
+      "rating": 0,
+      "views": 0,
+      "chapters_count": 2,
+      "created_at": "2026-02-25T05:32:58.859Z",
+      "updated_at": "2026-04-04T06:06:58.963Z",
+      "alternative_titles": [
+        "Mairimashita! Iruma-kun",
+        "入间同学入魔了 魔入りました！入間くん"
+      ],
+      "artist": "Осаму Ниси"
+    },
+    {
+      "id": 5,
+      "title": "Восьмой сын? Я не могу этого принять!",
+      "description": "Уставший от повседневной суеты молодой человек уснул в мыслях о спасительных выходных, а проснулся, неожиданно, в фэнтезийном мире!  ...",
+      "cover_image": "/uploads/covers/cover-5.png",
+      "author": "Y.A",
+      "status": "ongoing",
+      "year": 2015,
+      "genres": [
+        "Боевик",
+        "Исекай",
+        "Боевые искусства",
+        "Сёнэн"
+      ],
+      "rating": 0,
+      "views": 0,
+      "chapters_count": 2,
+      "created_at": "2026-02-25T05:32:59.570Z",
+      "updated_at": "2026-04-04T06:06:59.064Z",
+      "alternative_titles": [
+        "Hachinan tte, Sore wa Nai Deshou!",
+        "八男って、それはないでしょう？八男？别闹了！"
+      ],
+      "artist": "Y.A"
+    },
+    {
+      "id": 6,
+      "title": "Моя дочь, отправившаяся в столицу, захотев стать авантюристом, достигла S-ранга",
+      "description": "Карьера авантюриста для многих видится вершиной мечтаний, и Белгрив также грезил, как и его сверстники стать тем, кто будет лихо уничтожать монстров, но сил или везения может попросту не хватить...",
+      "cover_image": "/uploads/covers/cover-6.png",
+      "author": "Moji Kakiya и toi8",
+      "status": "ongoing",
+      "year": 2018,
+      "genres": [
+        "Боевик",
+        "Комедия",
+        "Фэнтези",
+        "Приключения"
+      ],
+      "rating": 0,
+      "views": 0,
+      "chapters_count": 2,
+      "created_at": "2026-02-25T05:32:59.670Z",
+      "updated_at": "2026-04-04T06:06:59.171Z",
+      "alternative_titles": [
+        "Boukensha ni Naritai to Miyako ni Deteitta Musume ga S Rank ni Natteta",
+        "冒険者になりたいと都に出て行った娘がＳランクになってた"
+      ],
+      "artist": "Moji Kakiya и toi8"
+    }
+  ],
+  "chapters": [
+    {
+      "id": 1771998651943.2874,
+      "manga_id": 1,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 34,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.943Z"
+    },
+    {
+      "id": 1771998651946.3489,
+      "manga_id": 1,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 29,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.946Z"
+    },
+    {
+      "id": 1771998651948.2798,
+      "manga_id": 2,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 25,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.948Z"
+    },
+    {
+      "id": 1771998651950.012,
+      "manga_id": 2,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 25,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.950Z"
+    },
+    {
+      "id": 1771998651952.3281,
+      "manga_id": 3,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 29,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.952Z"
+    },
+    {
+      "id": 1771998651954.1006,
+      "manga_id": 3,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 23,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.954Z"
+    },
+    {
+      "id": 1771998651956.35,
+      "manga_id": 4,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 45,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.956Z"
+    },
+    {
+      "id": 1771998651958.6895,
+      "manga_id": 4,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 30,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.958Z"
+    },
+    {
+      "id": 1771998651960.6113,
+      "manga_id": 5,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 38,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.960Z"
+    },
+    {
+      "id": 1771998651963.6335,
+      "manga_id": 5,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 35,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.963Z"
+    },
+    {
+      "id": 1771998651965.4302,
+      "manga_id": 6,
+      "chapter_number": 1,
+      "title": "Глава 1",
+      "pages_count": 35,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.965Z"
+    },
+    {
+      "id": 1771998651967.0945,
+      "manga_id": 6,
+      "chapter_number": 2,
+      "title": "Глава 2",
+      "pages_count": 36,
+      "views": 0,
+      "created_at": "2026-02-25T05:50:51.967Z"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@test.com",
+      "password": "admin123",
+      "avatar": "/uploads/avatars/default.png",
+      "role": "admin",
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "favorites": [
+        1,
+        2
+      ],
+      "reading_history": [],
+      "email_verified": true
+    },
+    {
+      "id": 1772002329551,
+      "username": "zhiend00",
+      "email": "sherbina_natashenka@mail.ru",
+      "password": "Arton197190",
+      "avatar": "/uploads/avatars/default.png",
+      "role": "admin",
+      "created_at": "2026-02-25T06:52:09.551Z",
+      "favorites": [],
+      "reading_history": [],
+      "email_verified": true
+    }
+  ],
+  "favorites": [],
+  "reading_progress": [],
+  "forum_categories": [
+    {
+      "id": 1,
+      "name": "Обсуждение манги",
+      "description": "Обсуждаем сюжеты, персонажей и новинки",
+      "slug": "manga-discussion",
+      "topics_count": 2,
+      "posts_count": 3,
+      "icon": "📚",
+      "order": 1
+    },
+    {
+      "id": 2,
+      "name": "Новости и анонсы",
+      "description": "Самые свежие новости мира манги",
+      "slug": "news",
+      "topics_count": 1,
+      "posts_count": 2,
+      "icon": "📰",
+      "order": 2
+    }
+  ],
+  "forum_topics": [
+    {
+      "id": 1,
+      "category_id": 1,
+      "title": "Любимая манга и почему?",
+      "content": "Расскажите о своей любимой манге и почему она вам нравится.",
+      "author_id": 1,
+      "views": 45,
+      "posts_count": 2,
+      "is_pinned": false,
+      "is_locked": false,
+      "created_at": "2026-03-13T12:00:00.000Z",
+      "updated_at": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "category_id": 2,
+      "title": "Вышел новый том Берсерка!",
+      "content": "Долгожданное событие – новый том на русском языке уже в продаже.",
+      "author_id": 1,
+      "views": 120,
+      "posts_count": 2,
+      "is_pinned": true,
+      "is_locked": false,
+      "created_at": "2026-03-13T13:00:00.000Z",
+      "updated_at": "2026-03-13T13:00:00.000Z"
+    },
+    {
+      "title": "cd",
+      "content": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "categoryId": "2",
+      "id": 3
+    },
+    {
+      "title": "ccccccccccc",
+      "content": "dfffffffffffffffffffffff",
+      "id": 4
+    },
+    {
+      "title": "css",
+      "content": "cssssssss",
+      "id": 5
+    },
+    {
+      "title": "cs",
+      "content": "cscs",
+      "categoryId": "1",
+      "id": 6
+    },
+    {
+      "title": "ссссссссссссссссссссссссс",
+      "content": "сяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя",
+      "id": 7
+    }
+  ],
+  "forum_posts": [
+    {
+      "id": 1,
+      "topic_id": 1,
+      "content": "Мне нравится Берсерк за его мрачную атмосферу и глубокий сюжет.",
+      "author_id": 1,
+      "likes": 5,
+      "created_at": "2026-03-13T12:05:00.000Z",
+      "updated_at": "2026-03-13T12:05:00.000Z"
+    },
+    {
+      "id": 2,
+      "topic_id": 1,
+      "content": "One Piece – лучшая приключенческая манга!",
+      "author_id": 2,
+      "likes": 3,
+      "created_at": "2026-03-13T12:10:00.000Z",
+      "updated_at": "2026-03-13T12:10:00.000Z"
+    },
+    {
+      "id": 3,
+      "topic_id": 2,
+      "content": "Наконец-то! Ждал этого целый год.",
+      "author_id": 2,
+      "likes": 8,
+      "created_at": "2026-03-13T13:05:00.000Z",
+      "updated_at": "2026-03-13T13:05:00.000Z"
+    },
+    {
+      "id": 4,
+      "topic_id": 2,
+      "content": "А где можно купить?",
+      "author_id": 3,
+      "likes": 1,
+      "created_at": "2026-03-13T13:10:00.000Z",
+      "updated_at": "2026-03-13T13:10:00.000Z"
+    },
+    {
+      "topicId": "1",
+      "content": "ccccccccccccc",
+      "id": 5
+    },
+    {
+      "topicId": "1",
+      "content": "ccccccccccccccc",
+      "id": 6
+    },
+    {
+      "topicId": "1",
+      "content": "dddddddddddddd",
+      "id": 7
+    }
+  ],
+  "userMangaStatus": [
+    {
+      "id": 1775303707926,
+      "userId": 1772002329551,
+      "mangaId": 6,
+      "status": "reading",
+      "createdAt": "2026-04-04T11:55:07.926Z",
+      "updatedAt": "2026-04-04T11:55:07.926Z"
+    }
+  ],
+  "feedback": [
+    {
+      "id": 1774572087725,
+      "name": "zhiend",
+      "email": "malininslava@mail.ru",
+      "message": "проверка связи на почте ",
+      "status": "new",
+      "created_at": "2026-03-27T00:41:27.725Z",
+      "ip": "::1",
+      "updated_at": "2026-03-27T01:58:18.385Z"
+    },
+    {
+      "id": 1774577378440,
+      "name": "dddddddddddddd",
+      "email": "malininslava@mail.ru",
+      "message": "fbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "read",
+      "created_at": "2026-03-27T02:09:38.440Z",
+      "ip": "::1",
+      "updated_at": "2026-03-27T02:10:52.172Z"
+    },
+    {
+      "id": 1774579168353,
+      "name": "ааааааааааа",
+      "email": "malininslava@mail.ru",
+      "message": "аааааааааааааааааааааа",
+      "status": "new",
+      "created_at": "2026-03-27T02:39:28.353Z",
+      "ip": "::1"
+    },
+    {
+      "id": 1774579428807,
+      "name": "бэ",
+      "email": "malininslava@mail.ru",
+      "message": "папаааааааааааааааа",
+      "status": "read",
+      "created_at": "2026-03-27T02:43:48.807Z",
+      "ip": "::1",
+      "updated_at": "2026-03-27T02:44:26.050Z"
+    },
+    {
+      "name": "ggggg",
+      "email": "sherbina_natashenka@mail.ru",
+      "message": "fffffffffffffffffff",
+      "id": 1774579428808
+    }
+  ]
+}
