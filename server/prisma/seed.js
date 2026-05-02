@@ -51,9 +51,9 @@ async function main() {
       status: 'ongoing',
       year: 2026,
       genres: ['приключения', 'фэнтези'],
-      cover_image: '/uploads/covers/default.png',
+      coverImage: '/uploads/covers/default.png',   // ← исправлено
     },
-  });
+});
   console.log('✅ Тестовая манга добавлена');
 }
 
