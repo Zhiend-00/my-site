@@ -17,9 +17,9 @@ import XLSX from 'xlsx';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-BigInt.prototype.toJSON = function() {
-  return this.toString();
-};
+//BigInt.prototype.toJSON = function() { //
+  //return this.toString(); //
+//};//
 
 const prisma = new PrismaClient();
 const app = express();
@@ -1326,6 +1326,20 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
 });
 
 // ========== Запуск ==========
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+  process.exit(1);
 });
+
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+  process.exit(1);
+});
+
+app.listen(PORT, () => {
+  console.log('========================================');
+  console.log(`Server running on port ${PORT}`);
+  console.log('========================================');
+});
+
+console.log('Attempting to start server...');
