@@ -1297,9 +1297,11 @@ app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) =>
 app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Файл не загружен' });
+    console.log('📄 Получен файл:', req.file.originalname, req.file.size, 'байт');
     const workbook = XLSX.readFile(req.file.path);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet);
+    console.log('📊 Строк для импорта:', rows.length);
     let imported = 0;
     for (const row of rows) {
       await prisma.manga.create({
@@ -1318,10 +1320,11 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
       imported++;
     }
     fs.unlinkSync(req.file.path);
+    console.log(`✅ Импортировано ${imported} записей`);
     res.json({ message: `Импортировано ${imported} записей` });
   } catch (err) {
-    console.error('Ошибка импорта:', err);
-    res.status(500).json({ message: 'Ошибка импорта из Excel' });
+    console.error('❌ Ошибка импорта:', err);
+    res.status(500).json({ message: 'Ошибка импорта из Excel: ' + err.message });
   }
 });
 
