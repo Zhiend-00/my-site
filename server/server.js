@@ -1340,12 +1340,12 @@ process.on('unhandledRejection', (err) => {
 // Автоматическая синхронизация базы данных
 import { execSync } from 'child_process';
 try {
-  execSync('npx prisma db push --skip-generate', { stdio: 'ignore' });
+  console.log('🔄 Синхронизация базы данных...');
+  execSync('npx prisma db push --skip-generate', { stdio: 'pipe' });
   console.log('✅ База данных синхронизирована');
 } catch (e) {
   console.error('❌ Ошибка синхронизации БД:', e.message);
 }
-
 
 app.listen(PORT, () => {
   console.log('========================================');
