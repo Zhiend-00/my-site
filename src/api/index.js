@@ -20,7 +20,7 @@ async function request(endpoint, options = {}) {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const res = await fetch(`${API_BASE.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`, {
     ...options,
     headers,
   });
