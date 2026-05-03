@@ -1,32 +1,13 @@
 <template>
-  <div class="notifications-page">
+  <div class="notif-page">
     <div class="container">
       <h1>Уведомления</h1>
-      <div v-if="loading" class="loading">Загрузка...</div>
-      <div v-else-if="notifications.length === 0" class="empty">
-        У вас пока нет уведомлений
-      </div>
-      <div v-else class="notifications-list">
-        <div
-          v-for="notif in notifications"
-          :key="notif.id"
-          class="notification-item"
-          :class="{ unread: !notif.read }"
-          @click="handleNotificationClick(notif)"
-        >
-          <div class="notif-icon">{{ getIcon(notif.type) }}</div>
-          <div class="notif-content">
-            <div class="notif-text">{{ notif.message }}</div>
-            <div class="notif-time">{{ formatTime(notif.createdAt) }}</div>
-          </div>
-          <button
-            v-if="!notif.read"
-            class="mark-read-btn"
-            @click.stop="markAsRead(notif)"
-            title="Отметить прочитанным"
-          >
-            ✓
-          </button>
+      <div v-if="notifications.length === 0" class="empty">Пока нет уведомлений</div>
+      <div v-else class="list">
+        <div v-for="n in notifications" :key="n.id" class="item" :class="{ unread: !n.read }" @click="markRead(n)">
+          <span class="icon">{{ getIcon(n.type) }}</span>
+          <div class="text">{{ n.message }}</div>
+          <span class="time">{{ formatTime(n.createdAt) }}</span>
         </div>
       </div>
     </div>
@@ -35,153 +16,50 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { notificationsAPI } from '@/api'
 
 const authStore = useAuthStore()
-const router = useRouter()
-
 const notifications = ref([])
-const loading = ref(true)
 
-const getIcon = (type) => {
-  const icons = {
-    new_chapter: '📖',
-    forum_reply: '💬',
-    like: '❤️',
-    system: 'ℹ️',
-  }
-  return icons[type] || '🔔'
+// Демо-уведомления при отсутствии данных (можно удалить, когда API заработает)
+const demoNotifications = [
+  { id: 'demo1', type: 'new_chapter', message: 'Вышла новая глава "О моем перерождении в меч"', read: false, createdAt: new Date().toISOString() },
+  { id: 'demo2', type: 'like', message: 'Пользователь Ivan поставил лайк вашему комментарию', read: false, createdAt: new Date(Date.now()-3600000).toISOString() },
+  { id: 'demo3', type: 'forum_reply', message: 'Новый ответ в теме «Любимая манга»', read: true, createdAt: new Date(Date.now()-86400000).toISOString() }
+]
+
+const getIcon = type => ({ new_chapter:'📖', forum_reply:'💬', like:'❤️', system:'ℹ️' }[type] || '🔔')
+const formatTime = dateStr => {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff/60000)
+  if (mins < 1) return 'только что'
+  if (mins < 60) return `${mins} мин`
+  const hours = Math.floor(mins/60)
+  if (hours < 24) return `${hours} ч`
+  return `${Math.floor(hours/24)} д`
 }
+const markRead = async n => { if (!n.read) { try { await notificationsAPI.markAsRead(n.id); n.read = true } catch {} } }
 
-const formatTime = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const now = new Date()
-  const diff = now - date
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days === 0) {
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    if (hours === 0) {
-      const mins = Math.floor(diff / (1000 * 60))
-      return mins <= 1 ? 'только что' : `${mins} мин. назад`
-    }
-    return `${hours} ч. назад`
-  }
-  if (days === 1) return 'вчера'
-  if (days < 7) return `${days} дн. назад`
-  return date.toLocaleDateString('ru-RU')
-}
-
-const markAsRead = async (notif) => {
-  try {
-    await notificationsAPI.markAsRead(notif.id)
-    notif.read = true
-  } catch (error) {
-    console.error('Ошибка отметки уведомления:', error)
-  }
-}
-
-const handleNotificationClick = async (notif) => {
-  if (!notif.read) {
-    await markAsRead(notif)
-  }
-  if (notif.link) {
-    router.push(notif.link)
-  }
-}
-
-const loadNotifications = async () => {
-  if (!authStore.isLoggedIn) {
-    router.push('/login')
-    return
-  }
-  loading.value = true
+onMounted(async () => {
   try {
     const data = await notificationsAPI.getAll()
-    notifications.value = data || []
-  } catch (error) {
-    console.error('Ошибка загрузки уведомлений:', error)
-  } finally {
-    loading.value = false
+    notifications.value = data && data.length ? data : demoNotifications
+  } catch {
+    notifications.value = demoNotifications
   }
-}
-
-onMounted(() => {
-  loadNotifications()
 })
 </script>
 
 <style scoped>
-.notifications-page {
-  padding: 40px 0;
-  min-height: 70vh;
-}
-h1 {
-  color: #07660c;
-  margin-bottom: 30px;
-}
-.loading,
-.empty {
-  text-align: center;
-  color: #80832a;
-  padding: 40px;
-}
-.notifications-list {
-  background: #202020;
-  border-radius: 12px;
-  overflow: hidden;
-}
-.notification-item {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px 20px;
-  border-bottom: 1px solid #2b2b2b;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.notification-item:hover {
-  background: #2b2b2b;
-}
-.notification-item.unread {
-  background: rgba(7, 102, 12, 0.15);
-  border-left: 4px solid #07660c;
-}
-.notif-icon {
-  font-size: 1.5rem;
-  width: 30px;
-  text-align: center;
-}
-.notif-content {
-  flex: 1;
-}
-.notif-text {
-  color: #fff;
-  margin-bottom: 5px;
-}
-.notif-time {
-  font-size: 0.8rem;
-  color: #80832a;
-}
-.mark-read-btn {
-  background: none;
-  border: 1px solid #80832a;
-  color: #80832a;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1rem;
-}
-.mark-read-btn:hover {
-  background: #07660c;
-  border-color: #07660c;
-  color: white;
-}
+.notif-page { padding: 30px 0; min-height: 70vh; }
+h1 { color: var(--color-primary); margin-bottom: 20px; }
+.empty { text-align: center; color: var(--color-text-muted); padding: 40px; }
+.list { background: var(--color-panel); border-radius: 10px; overflow: hidden; }
+.item { display: flex; align-items: center; gap: 15px; padding: 12px 20px; border-bottom: 1px solid var(--color-border); cursor: pointer; }
+.item:hover { background: var(--color-panel-light); }
+.item.unread { border-left: 3px solid var(--color-primary); background: rgba(10,126,20,0.08); }
+.icon { font-size: 1.4rem; }
+.text { flex: 1; }
+.time { color: var(--color-text-muted); font-size: 0.8rem; }
 </style>

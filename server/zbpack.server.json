@@ -1,4 +1,0 @@
-{
-    "app_dir": "server",
-    "start_command": "npx prisma generate && node server.js"
-}

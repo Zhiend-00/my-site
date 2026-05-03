@@ -1,36 +1,30 @@
-/* ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ========== */
 :root {
-  /* Основные цвета (как в HomeView) */
-  --color-primary: #07660C;
-  --color-primary-hover: #0a7e0f;
-  --color-secondary: #80832A;
-  --color-background: #000000;
-  --color-panel: #202020;
-  --color-panel-light: #2B2B2B;
-  --color-text: #FFFFFF;
-  --color-text-muted: #a0a0a0;
-  --color-border: #2B2B2B;
+  --color-primary: #0a7e14;
+  --color-primary-hover: #0c9624;
+  --color-secondary: #9ea344;
+  --color-background: #111111;
+  --color-panel: #1e1e1e;
+  --color-panel-light: #2a2a2a;
+  --color-text: #ffffff;
+  --color-text-muted: #aaaaaa;
+  --color-border: #2a2a2a;
   
-  /* Размеры */
-  --header-height: 70px;
-  --footer-height: 60px;
-  --sidebar-width: 280px;
+  --header-height: 60px;
+  --footer-height: 50px;
+  --sidebar-width: 260px;
   
-  /* Отступы */
-  --spacing-xs: 5px;
-  --spacing-sm: 10px;
-  --spacing-md: 20px;
-  --spacing-lg: 30px;
-  --spacing-xl: 40px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
   
-  /* Анимации */
-  --transition-fast: 0.2s;
-  --transition-normal: 0.3s;
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
   
-  /* Тени */
-  --shadow-light: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-medium: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-heavy: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-light: 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-medium: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-heavy: 0 6px 24px rgba(0,0,0,0.5);
 }
 
 * {
@@ -43,82 +37,57 @@ html, body {
   height: 100%;
   background: var(--color-background);
   color: var(--color-text);
-  font-family: 'Arial', 'Segoe UI', sans-serif;
-  line-height: 1.6;
-  scroll-behavior: smooth;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  line-height: 1.5;
 }
 
-/* ========== УТИЛИТЫ ========== */
 .container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 }
 
-/* Скроллбар */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-panel-light);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary-hover);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-panel-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 3px; }
 
-/* Кнопки */
 .btn-primary {
   display: inline-block;
   background: var(--color-primary);
   color: white;
-  padding: 10px 24px;
-  border-radius: 30px;
+  padding: 8px 20px;
+  border-radius: 20px;
   text-decoration: none;
   font-weight: 600;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast);
   border: none;
   cursor: pointer;
 }
-.btn-primary:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-2px);
-}
+.btn-primary:hover { background: var(--color-primary-hover); transform: translateY(-1px); }
 
 .btn-secondary {
   background: transparent;
-  border: 2px solid var(--color-secondary);
+  border: 1px solid var(--color-secondary);
   color: var(--color-text);
-  padding: 8px 20px;
-  border-radius: 30px;
+  padding: 8px 18px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast);
 }
-.btn-secondary:hover {
-  background: var(--color-secondary);
-  color: white;
-}
+.btn-secondary:hover { background: var(--color-secondary); color: white; }
 
-/* Карточки */
 .card {
   background: var(--color-panel);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 10px;
   transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: var(--color-primary);
   box-shadow: var(--shadow-medium);
 }
 
-/* Анимация загрузки */
 @keyframes pulse {
   0% { opacity: 0.6; }
   50% { opacity: 1; }

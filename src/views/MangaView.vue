@@ -504,4 +504,11 @@ h1 {
 }
 .verify-link { background: #07660c; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; }
 .verification-warning { text-align: center; padding: 20px; background: #202020; border-radius: 8px; margin-bottom: 20px; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background var(--transition-fast); }
+.btn-track { background: var(--color-secondary); color: white; }
+.btn-read { background: var(--color-primary); color: white; }
+.btn-bookmark { background: var(--color-panel-light); border: 1px solid var(--color-secondary); color: white; }
+/* остальные стили из исходного кода, но цвета обновлены */
 </style>

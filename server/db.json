@@ -343,43 +343,28 @@
       "updated_at": "2026-03-13T13:00:00.000Z"
     },
     {
-      "title": "cd",
-      "content": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-      "categoryId": "2",
-      "id": 3
-    },
-    {
-      "title": "ccccccccccc",
-      "content": "dfffffffffffffffffffffff",
-      "id": 4
-    },
-    {
-      "title": "css",
-      "content": "cssssssss",
-      "id": 5
-    },
-    {
-  "title": "css",
-  "content": "cssssssss",
-  "category_id": 1,
-  "author_id": 1,
-  "id": 5
-}
-    {
-      "title": "ссссссссссссссссссссссссс",
-      "content": "сяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя",
-      "id": 7
+      "id": 3,
+      "category_id": 1,
+      "title": "Обсуждение новинок",
+      "content": "Какие новинки манги вы сейчас читаете?",
+      "author_id": 2,
+      "views": 30,
+      "posts_count": 1,
+      "is_pinned": false,
+      "is_locked": false,
+      "created_at": "2026-04-01T10:00:00.000Z",
+      "updated_at": "2026-04-01T10:00:00.000Z"
     }
   ],
-  "forum_posts": [
+
+ "forum_posts": [
     {
       "id": 1,
       "topic_id": 1,
-      "content": "Мне нравится Берсерк за его мрачную атмосферу и глубокий сюжет.",
+      "content": "Мне нравится Берсерк за его мрачную атмосферу.",
       "author_id": 1,
       "likes": 5,
-      "created_at": "2026-03-13T12:05:00.000Z",
-      "updated_at": "2026-03-13T12:05:00.000Z"
+      "created_at": "2026-03-13T12:05:00.000Z"
     },
     {
       "id": 2,
@@ -387,8 +372,7 @@
       "content": "One Piece – лучшая приключенческая манга!",
       "author_id": 2,
       "likes": 3,
-      "created_at": "2026-03-13T12:10:00.000Z",
-      "updated_at": "2026-03-13T12:10:00.000Z"
+      "created_at": "2026-03-13T12:10:00.000Z"
     },
     {
       "id": 3,
@@ -396,44 +380,11 @@
       "content": "Наконец-то! Ждал этого целый год.",
       "author_id": 2,
       "likes": 8,
-      "created_at": "2026-03-13T13:05:00.000Z",
-      "updated_at": "2026-03-13T13:05:00.000Z"
-    },
-    {
-      "id": 4,
-      "topic_id": 2,
-      "content": "А где можно купить?",
-      "author_id": 3,
-      "likes": 1,
-      "created_at": "2026-03-13T13:10:00.000Z",
-      "updated_at": "2026-03-13T13:10:00.000Z"
-    },
-    {
-      "topicId": "1",
-      "content": "ccccccccccccc",
-      "id": 5
-    },
-    {
-      "topicId": "1",
-      "content": "ccccccccccccccc",
-      "id": 6
-    },
-    {
-      "topicId": "1",
-      "content": "dddddddddddddd",
-      "id": 7
+      "created_at": "2026-03-13T13:05:00.000Z"
     }
-  ],
-  "userMangaStatus": [
-    {
-      "id": 1775303707926,
-      "userId": 1772002329551,
-      "mangaId": 6,
-      "status": "reading",
-      "createdAt": "2026-04-04T11:55:07.926Z",
-      "updatedAt": "2026-04-04T11:55:07.926Z"
-    }
-  ],
+],
+
+  "userMangaStatus": [],
   "feedback": [
     {
       "id": 1774572087725,

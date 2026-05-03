@@ -53,33 +53,30 @@
           </div>
 
           <nav class="profile-nav">
-            <a
-              href="#"
-              @click.prevent="activeTab = 'general'"
+            <button
+              @click="activeTab = 'general'"
               class="nav-item"
               :class="{ active: activeTab === 'general' }"
             >
               <span class="nav-icon">👤</span>
               <span>Общая информация</span>
-            </a>
-            <a
-              href="#"
-              @click.prevent="activeTab = 'activity'"
+            </button>
+            <button
+              @click="activeTab = 'activity'"
               class="nav-item"
               :class="{ active: activeTab === 'activity' }"
             >
               <span class="nav-icon">📊</span>
               <span>Активность</span>
-            </a>
-            <a
-              href="#"
-              @click.prevent="activeTab = 'settings'"
+            </button>
+            <button
+              @click="activeTab = 'settings'"
               class="nav-item"
               :class="{ active: activeTab === 'settings' }"
             >
               <span class="nav-icon">⚙️</span>
               <span>Настройки</span>
-            </a>
+            </button>
           </nav>
 
           <div class="profile-stats">
@@ -104,13 +101,11 @@
           <!-- Вкладка: Общая информация -->
           <div v-if="activeTab === 'general'" class="content-section">
             <h2>Общая информация</h2>
-
             <div class="info-grid">
               <div class="info-item">
                 <label>Имя пользователя:</label>
                 <div class="info-value">{{ authStore.user?.username }}</div>
               </div>
-
               <div class="info-item">
                 <label>Email:</label>
                 <div class="info-value">
@@ -120,19 +115,13 @@
                   </span>
                 </div>
               </div>
-
               <div class="info-item">
                 <label>Дата регистрации:</label>
-                <div class="info-value">
-                  {{ formatDate(authStore.user?.createdAt) }}
-                </div>
+                <div class="info-value">{{ formatDate(authStore.user?.createdAt) }}</div>
               </div>
-
               <div class="info-item">
                 <label>ID пользователя:</label>
-                <div class="info-value">
-                  <code>{{ authStore.user?.id }}</code>
-                </div>
+                <div class="info-value"><code>{{ authStore.user?.id }}</code></div>
               </div>
             </div>
           </div>
@@ -153,9 +142,7 @@
                     <img :src="getCoverUrl(item.cover)" class="manga-thumb" />
                     <div class="progress-info">
                       <span class="manga-title">{{ item.mangaTitle }}</span>
-                      <span class="chapter-info"
-                        >Глава {{ item.chapterNumber }} · стр. {{ item.pageNumber }}</span
-                      >
+                      <span class="chapter-info">Глава {{ item.chapterNumber }} · стр. {{ item.pageNumber }}</span>
                       <span class="progress-date">{{ formatRelativeDate(item.updatedAt) }}</span>
                     </div>
                   </router-link>
@@ -206,7 +193,6 @@
           <!-- Вкладка: Настройки -->
           <div v-if="activeTab === 'settings'" class="content-section">
             <h2>Настройки аккаунта</h2>
-
             <div class="settings-grid">
               <div class="settings-group">
                 <h3>Основные</h3>
@@ -564,23 +550,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Полный блок стилей (восстановлен) */
 .profile-page {
   min-height: calc(100vh - var(--header-height) - var(--footer-height));
   padding: var(--spacing-xl) 0;
-  background: linear-gradient(135deg, var(--color-background) 0%, #1a1a1a 100%);
+  background: var(--color-background);
 }
 
 .page-header {
   margin-bottom: var(--spacing-xl);
 }
-
 .page-header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: var(--color-primary);
   margin-bottom: var(--spacing-sm);
 }
-
 .page-header p {
   color: var(--color-text);
   opacity: 0.8;
@@ -596,8 +579,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: var(--color-text);
 }
-
 .btn-primary {
   background: var(--color-primary);
   color: white;
@@ -605,11 +588,12 @@ onMounted(() => {
   border-radius: 8px;
   text-decoration: none;
   font-weight: 600;
+  display: inline-block;
 }
 
 .profile-wrapper {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: var(--spacing-xl);
 }
 
@@ -626,12 +610,10 @@ onMounted(() => {
   text-align: center;
   box-shadow: var(--shadow-medium);
 }
-
 .user-avatar-container {
   position: relative;
   display: inline-block;
 }
-
 .user-avatar {
   width: 120px;
   height: 120px;
@@ -650,11 +632,9 @@ onMounted(() => {
   transition: opacity 0.2s;
   border: 3px solid var(--color-secondary);
 }
-
 .user-avatar:hover {
   opacity: 0.8;
 }
-
 .avatar-edit-btn {
   position: absolute;
   bottom: 10px;
@@ -672,30 +652,25 @@ onMounted(() => {
   justify-content: center;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
-
 .user-info h3 {
   color: var(--color-text);
   margin-bottom: var(--spacing-xs);
   font-size: 1.5rem;
 }
-
 .user-email {
   color: var(--color-text);
   opacity: 0.7;
   font-size: 0.9rem;
   margin-bottom: var(--spacing-xs);
 }
-
 .user-status {
   color: #ff4444;
   font-size: 0.9rem;
   font-weight: 600;
 }
-
 .user-status.verified {
   color: #00cc44;
 }
-
 .resend-btn {
   background: var(--color-primary);
   color: white;
@@ -707,7 +682,6 @@ onMounted(() => {
   margin-top: 10px;
   width: 100%;
 }
-
 .resend-btn:disabled {
   opacity: 0.5;
 }
@@ -718,7 +692,6 @@ onMounted(() => {
   overflow: hidden;
   box-shadow: var(--shadow-medium);
 }
-
 .nav-item {
   display: flex;
   align-items: center;
@@ -729,19 +702,20 @@ onMounted(() => {
   border-left: 4px solid transparent;
   transition: all var(--transition-normal);
   cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  width: 100%;
 }
-
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
   border-left-color: var(--color-secondary);
 }
-
 .nav-item.active {
   background: rgba(7, 102, 12, 0.1);
   border-left-color: var(--color-primary);
   font-weight: 600;
 }
-
 .nav-icon {
   font-size: 1.2rem;
 }
@@ -752,13 +726,11 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: var(--shadow-medium);
 }
-
 .profile-stats h4 {
   color: var(--color-text);
   margin-bottom: var(--spacing-md);
   font-size: 1.2rem;
 }
-
 .stat-item {
   display: flex;
   justify-content: space-between;
@@ -766,17 +738,14 @@ onMounted(() => {
   padding: var(--spacing-sm) 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-
 .stat-item:last-child {
   border-bottom: none;
 }
-
 .stat-label {
   color: var(--color-text);
   opacity: 0.7;
   font-size: 0.9rem;
 }
-
 .stat-value {
   color: var(--color-primary);
   font-weight: 600;
@@ -795,7 +764,6 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: var(--shadow-medium);
 }
-
 .content-section h2 {
   color: var(--color-text);
   margin-bottom: var(--spacing-lg);
@@ -809,19 +777,16 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: var(--spacing-lg);
 }
-
 .info-item {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
 }
-
 .info-item label {
   color: var(--color-text);
   opacity: 0.7;
   font-size: 0.9rem;
 }
-
 .info-value {
   color: var(--color-text);
   font-size: 1.1rem;
@@ -830,7 +795,6 @@ onMounted(() => {
   align-items: center;
   gap: var(--spacing-sm);
 }
-
 .email-status {
   display: inline-flex;
   align-items: center;
@@ -841,17 +805,14 @@ onMounted(() => {
   font-size: 0.8rem;
   font-weight: bold;
 }
-
 .email-status.verified {
   background: rgba(0, 255, 0, 0.1);
   color: #00cc44;
 }
-
 .email-status:not(.verified) {
   background: rgba(255, 0, 0, 0.1);
   color: #ff4444;
 }
-
 code {
   background: rgba(255, 255, 255, 0.1);
   padding: 2px 6px;
@@ -864,12 +825,10 @@ code {
 .activity-block {
   margin-bottom: var(--spacing-xl);
 }
-
 .activity-block h3 {
   color: var(--color-primary);
   margin-bottom: var(--spacing-md);
 }
-
 .empty-activity {
   color: var(--color-text-muted);
   text-align: center;
@@ -877,27 +836,23 @@ code {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
 }
-
 .recent-progress-list,
 .bookmark-items {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
-
 .progress-item,
 .bookmark-item {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   transition: transform 0.2s;
 }
-
 .progress-item:hover,
 .bookmark-item:hover {
   transform: translateX(5px);
   background: rgba(255, 255, 255, 0.1);
 }
-
 .manga-link {
   display: flex;
   align-items: center;
@@ -906,7 +861,6 @@ code {
   text-decoration: none;
   color: inherit;
 }
-
 .manga-thumb {
   width: 50px;
   height: 70px;
@@ -914,44 +868,37 @@ code {
   border-radius: 6px;
   background: var(--color-panel-light);
 }
-
 .progress-info,
 .bookmark-info {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
-
 .manga-title {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 4px;
 }
-
 .chapter-info {
   font-size: 0.9rem;
   color: var(--color-secondary);
 }
-
 .progress-date {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   margin-top: 4px;
 }
-
 .bookmark-status {
   font-size: 0.8rem;
   color: var(--color-primary);
   text-transform: uppercase;
 }
-
 .bookmarks-tabs {
   display: flex;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-md);
   flex-wrap: wrap;
 }
-
 .bookmark-tab {
   background: transparent;
   border: 1px solid var(--color-secondary);
@@ -962,11 +909,9 @@ code {
   transition: all 0.2s;
   font-size: 0.9rem;
 }
-
 .bookmark-tab:hover {
   background: rgba(128, 131, 42, 0.2);
 }
-
 .bookmark-tab.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -979,24 +924,20 @@ code {
   flex-direction: column;
   gap: var(--spacing-xl);
 }
-
 .settings-group {
   background: rgba(255, 255, 255, 0.03);
   padding: var(--spacing-lg);
   border-radius: 12px;
 }
-
 .settings-group h3 {
   color: var(--color-text);
   margin-bottom: var(--spacing-md);
   font-size: 1.3rem;
 }
-
 .settings-group.danger {
   border: 1px solid #ff4444;
   background: rgba(255, 0, 0, 0.05);
 }
-
 .settings-btn {
   display: flex;
   align-items: center;
@@ -1013,23 +954,19 @@ code {
   transition: all 0.2s;
   text-align: left;
 }
-
 .settings-btn:hover {
   background: rgba(7, 102, 12, 0.2);
   border-color: var(--color-primary);
   transform: translateX(5px);
 }
-
 .settings-btn.warning {
   border-color: #ffaa00;
   color: #ffaa00;
 }
-
 .settings-btn.danger-btn {
   border-color: #ff4444;
   color: #ff4444;
 }
-
 .settings-btn.danger-btn:hover {
   background: rgba(255, 0, 0, 0.2);
 }
@@ -1048,47 +985,40 @@ code {
   justify-content: center;
   z-index: 3000;
 }
-
 .modal-content {
-  background: #202020;
+  background: var(--color-panel);
   border-radius: 16px;
   width: 90%;
   max-width: 500px;
   padding: 25px;
 }
-
 .modal-content h3 {
   color: var(--color-primary);
   margin-bottom: 20px;
 }
-
 .form-group {
   margin-bottom: 20px;
 }
-
 .form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
 }
-
 .form-group input {
   width: 100%;
   padding: 12px;
-  background: #2b2b2b;
-  border: 1px solid #80832a;
+  background: var(--color-panel-light);
+  border: 1px solid var(--color-secondary);
   border-radius: 8px;
   color: #fff;
   font-family: inherit;
 }
-
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 15px;
   margin-top: 20px;
 }
-
 .save-btn,
 .cancel-btn {
   padding: 10px 20px;
@@ -1097,21 +1027,18 @@ code {
   border: none;
   font-weight: 600;
 }
-
 .save-btn {
-  background: #07660c;
+  background: var(--color-primary);
   color: white;
 }
-
 .save-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .cancel-btn {
   background: none;
-  border: 1px solid #80832a;
-  color: #80832a;
+  border: 1px solid var(--color-secondary);
+  color: var(--color-secondary);
 }
 
 /* Адаптивность */
@@ -1120,20 +1047,13 @@ code {
     grid-template-columns: 1fr;
   }
 }
-
 @media (max-width: 768px) {
   .profile-page {
     padding: var(--spacing-lg) 0;
   }
-
-  .page-header h1 {
-    font-size: 2rem;
-  }
-
   .content-section {
     padding: var(--spacing-lg);
   }
-
   .info-grid {
     grid-template-columns: 1fr;
   }
