@@ -1,0 +1,4 @@
+фронтенд:
+X:\Forgotten-team-master>npm run dev
+Бекенд: 
+X:\Forgotten-team-master\server>node server.js

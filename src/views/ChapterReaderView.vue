@@ -125,6 +125,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { chaptersAPI, progressAPI, mangaAPI } from '@/api';
 import { useAuthStore } from '@/stores/auth';
+import { getCoverUrl } from '@/utils/imageHelper';
 
 const route = useRoute();
 const router = useRouter();
@@ -169,9 +170,7 @@ const readingProgress = computed(() => {
 });
 
 const getFullImageUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `http://localhost:3000${url}`;
+  return getCoverUrl(url);
 };
 
 const goBack = () => router.back();
