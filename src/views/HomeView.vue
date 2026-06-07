@@ -1,24 +1,12 @@
 <template>
   <div class="home">
-    <!-- 1. Слайдер с информацией и анимированным фоном -->
     <section class="slider-section">
       <div class="container">
         <h2 class="section-heading">Слайдер с информацией</h2>
-        <div class="slider-placeholder" ref="sliderContainer">
-          <img
-            src="/src/about-team.png"
-            alt="Слайдер"
-            class="slider-image"
-          />
-          <canvas
-            ref="animatedCanvas"
-            class="slider-canvas"
-          ></canvas>
-        </div>
+        <HeroSlider />
       </div>
     </section>
 
-    <!-- 2. Последняя добавленная манга и главы -->
     <section class="latest-section" v-if="latestManga.length">
       <div class="container">
         <h2 class="section-heading">Последняя добавленная манга и главы</h2>
@@ -44,7 +32,6 @@
       </div>
     </section>
 
-    <!-- 3. Последние темы форума -->
     <section class="forum-section" v-if="latestTopics.length">
       <div class="container">
         <h2 class="section-heading">Последние темы форума</h2>
@@ -66,7 +53,6 @@
       </div>
     </section>
 
-    <!-- 4. Форма обратной связи (такая же ширина, как и предыдущие блоки) -->
     <section class="feedback-section">
       <div class="container">
         <h2 class="section-heading">📨 Обратная связь</h2>
@@ -94,12 +80,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMangaStore } from '@/stores/manga'
 import { getCoverUrl } from '@/utils/imageHelper'
 import { formatDate } from '@/utils/helpers'
 import { forumAPI, feedbackAPI } from '@/api'
+import HeroSlider from '@/components/HeroSlider.vue'
 
 const router = useRouter()
 const mangaStore = useMangaStore()
@@ -115,107 +102,24 @@ const latestTopics = ref([])
 const goToManga = (id) => router.push(`/manga/${id}`)
 const goToTopic = (id) => router.push(`/forum/topic/${id}`)
 
-// ---------- Canvas анимация ----------
-const sliderContainer = ref(null)
-const animatedCanvas = ref(null)
-let animationId = null
-
-const startCanvasAnimation = () => {
-  const canvas = animatedCanvas.value
-  const container = sliderContainer.value
-  if (!canvas || !container) return
-
-  const ctx = canvas.getContext('2d')
-  let width, height
-
-  const resizeCanvas = () => {
-    const rect = container.getBoundingClientRect()
-    width = rect.width
-    height = rect.height
-    canvas.width = width
-    canvas.height = height
-  }
-  resizeCanvas()
-  window.addEventListener('resize', resizeCanvas)
-
-  const particles = []
-  const numParticles = 50
-  const connectionDistance = 100
-
-  for (let i = 0; i < numParticles; i++) {
-    particles.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: (Math.random() - 0.5) * 0.8,
-      radius: Math.random() * 2 + 1,
-    })
-  }
-
-  const animate = () => {
-    ctx.clearRect(0, 0, width, height)
-
-    particles.forEach(p => {
-      p.x += p.vx
-      p.y += p.vy
-
-      if (p.x < 0 || p.x > width) p.vx *= -1
-      if (p.y < 0 || p.y > height) p.vy *= -1
-
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(158, 163, 68, 0.7)'
-      ctx.fill()
-    })
-
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x
-        const dy = particles[i].y - particles[j].y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < connectionDistance) {
-          ctx.beginPath()
-          ctx.moveTo(particles[i].x, particles[i].y)
-          ctx.lineTo(particles[j].x, particles[j].y)
-          ctx.strokeStyle = `rgba(158, 163, 68, ${1 - dist / connectionDistance})`
-          ctx.lineWidth = 0.5
-          ctx.stroke()
-        }
-      }
-    }
-
-    animationId = requestAnimationFrame(animate)
-  }
-
-  animate()
-}
-
-// ---------- Обратная связь ----------
 const form = ref({ name: '', email: '', message: '' })
 const sending = ref(false)
 const success = ref(false)
 
 const submitFeedback = async () => {
-  sending.value = true;
-  success.value = false;
+  sending.value = true
+  success.value = false
   try {
-    const response = await feedbackAPI.send({ ...form.value });
-    // response может содержать { message: '...' }
-    form.value = { name: '', email: '', message: '' };
-    success.value = true;
-    // Показываем сообщение от сервера (опционально)
-    alert(response.message || 'Сообщение отправлено!');
+    const response = await feedbackAPI.send({ ...form.value })
+    form.value = { name: '', email: '', message: '' }
+    success.value = true
+    alert(response.message || 'Сообщение отправлено!')
   } catch (err) {
-    // Пытаемся извлечь сообщение из тела ответа
-    let errorMsg = 'Ошибка отправки';
-    if (err.message) {
-      errorMsg = err.message; // это может быть текст ошибки от api
-    }
-    alert(errorMsg);
+    alert(err.message || 'Ошибка отправки')
   } finally {
-    sending.value = false;
+    sending.value = false
   }
-};
+}
 
 onMounted(async () => {
   await mangaStore.fetchAllManga()
@@ -225,25 +129,17 @@ onMounted(async () => {
   } catch (e) {
     console.error('Не удалось загрузить темы форума', e)
   }
-
-  await nextTick()
-  startCanvasAnimation()
-})
-
-onUnmounted(() => {
-  if (animationId) cancelAnimationFrame(animationId)
 })
 </script>
 
 <style scoped>
 .home {
-  background: var(--color-background, #111);
-  color: var(--color-text, #fff);
+  background: #121212;
+  color: #ffffff;
   padding: 10px 0 40px;
   margin-top: -10px;
 }
 
-/* Контейнер одинаковый для всех секций — max-width: 1200px */
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -252,7 +148,7 @@ onUnmounted(() => {
 
 .section-heading {
   font-size: 1.8rem;
-  color: var(--color-primary, #0a7e14);
+  color: #07660c;
   text-align: center;
   margin-bottom: 15px;
   position: relative;
@@ -262,66 +158,32 @@ onUnmounted(() => {
   display: block;
   width: 60px;
   height: 3px;
-  background: var(--color-secondary, #9ea344);
+  background: #80832a;
   margin: 10px auto 0;
   border-radius: 2px;
 }
 
-/* ========== Слайдер ========== */
-.slider-placeholder {
-  position: relative;
-  background: var(--color-panel, #1e1e1e);
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin-top: 5px;
-}
-.slider-image {
-  width: 100%;
-  height: auto;
-  max-height: 350px;
-  object-fit: cover;
-  display: block;
-}
-.slider-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  border-radius: 10px;
-}
-
-/* ========== Последняя добавленная манга ========== */
 .latest-grid {
   display: flex;
   gap: 20px;
-  overflow-x: auto;          /* горизонтальный скролл, если карточки не влезают */
-  padding-bottom: 10px;      /* чтобы скролл не перекрывал карточки */
+  overflow-x: auto;
+  padding-bottom: 10px;
   scroll-behavior: smooth;
 }
-
-/* чтобы скроллбар выглядел аккуратно (опционально) */
 .latest-grid::-webkit-scrollbar {
   height: 6px;
 }
 .latest-grid::-webkit-scrollbar-track {
-  background: var(--color-panel-light);
+  background: #2b2b2b;
   border-radius: 3px;
 }
 .latest-grid::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
+  background: #07660c;
   border-radius: 3px;
 }
-
-/* карточки получают фиксированную ширину, чтобы не сжимались */
 .manga-card {
-  flex: 0 0 180px;           /* ширина 180px, не растягивается и не сжимается */
-  background: var(--color-panel);
+  flex: 0 0 180px;
+  background: #202020;
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -329,7 +191,7 @@ onUnmounted(() => {
 }
 .manga-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
 }
 .manga-cover {
   width: 100%;
@@ -350,32 +212,31 @@ onUnmounted(() => {
 }
 .manga-date {
   font-size: 0.8rem;
-  color: var(--color-secondary);
+  color: #80832a;
   display: block;
   margin-bottom: 2px;
 }
 .manga-chapters {
   font-size: 0.8rem;
-  color: var(--color-text-muted, #aaa);
+  color: #a0a0a0;
 }
 
-/* ========== Форум ========== */
 .forum-list {
-  background: var(--color-panel);
+  background: #202020;
   border-radius: 10px;
   padding: 20px;
 }
 .forum-item {
   cursor: pointer;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   transition: background 0.2s;
 }
 .forum-item:last-child {
   border-bottom: none;
 }
 .forum-item:hover {
-  background: var(--color-panel-light);
+  background: #2b2b2b;
   border-radius: 6px;
 }
 .forum-item-content {
@@ -385,16 +246,15 @@ onUnmounted(() => {
 }
 .forum-item-title {
   font-weight: 500;
-  color: var(--color-primary);
+  color: #07660c;
 }
 .forum-item-meta {
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: #a0a0a0;
 }
 
-/* ========== Обратная связь ========== */
 .feedback-form {
-  background: var(--color-panel);
+  background: #202020;
   border-radius: 10px;
   padding: 25px;
   display: flex;
@@ -404,14 +264,14 @@ onUnmounted(() => {
 .input-group {
   display: flex;
   align-items: center;
-  background: var(--color-panel-light);
+  background: #2b2b2b;
   border-radius: 10px;
   padding: 0 15px;
   border: 1px solid transparent;
   transition: border-color 0.3s;
 }
 .input-group:focus-within {
-  border-color: var(--color-primary);
+  border-color: #07660c;
 }
 .input-icon {
   font-size: 1.2rem;
@@ -433,7 +293,7 @@ onUnmounted(() => {
 }
 .btn-submit {
   align-self: center;
-  background: var(--color-primary);
+  background: #07660c;
   color: white;
   border: none;
   padding: 14px 36px;
@@ -444,7 +304,7 @@ onUnmounted(() => {
   transition: background 0.3s, transform 0.2s;
 }
 .btn-submit:hover:not(:disabled) {
-  background: var(--color-primary-hover, #0c9624);
+  background: #0a7e0f;
   transform: translateY(-2px);
 }
 .btn-submit:disabled {
@@ -453,7 +313,7 @@ onUnmounted(() => {
 }
 .success-msg {
   text-align: center;
-  color: var(--color-primary);
+  color: #07660c;
   margin-top: 10px;
 }
 </style>

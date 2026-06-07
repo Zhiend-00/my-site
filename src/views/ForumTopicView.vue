@@ -1,330 +1,422 @@
 <template>
-  <div class="forum-topic-page">
-    <div class="container">
-      <div class="topic-header">
-        <button class="back-btn" @click="$router.back()">← Назад</button>
-        <h1>{{ topic?.title }}</h1>
-        <div class="topic-meta">
-          <span>👤 {{ topic?.author_name || 'Аноним' }}</span>
-          <span>📅 {{ formatDate(topic?.created_at) }}</span>
-          <span>👁 {{ topic?.views || 0 }} просмотров</span>
-          <span>💬 {{ posts.length }} ответов</span>
-        </div>
-        <div v-if="topic?.is_locked" class="locked-badge">🔒 Тема закрыта</div>
+  <div class="topic-page">
+    <div class="topic-container">
+      <button @click="goBack" class="back-btn">← Назад к форуму</button>
+
+      <div v-if="!topic" class="error-state">
+        <h2>❌ Тема не найдена</h2>
+        <p>Возможно, она была удалена или ссылка неверна</p>
+        <button @click="goBack" class="back-btn">Вернуться на форум</button>
       </div>
 
-      <div v-if="loading" class="loading-state">Загрузка...</div>
-      <div v-else class="posts-list">
-        <div v-for="(post, index) in posts" :key="post.id" class="post-card" :id="`post-${post.id}`">
-          <div class="post-sidebar">
-            <div class="post-author-avatar">{{ getInitials(post.author_name) }}</div>
-            <div class="post-author-name">{{ post.author_name || 'Аноним' }}</div>
-            <div class="post-author-role" :class="post.author_role">{{ post.author_role || 'user' }}</div>
-            <div class="post-number">#{{ index + 1 }}</div>
+      <template v-else>
+        <div class="topic-header">
+          <h1 class="topic-title">{{ topic.title }}</h1>
+          <div class="topic-meta">
+            <span>Автор: {{ topic.author?.username || 'Пользователь' }}</span>
+            <span>📅 {{ formatDate(topic.created_at) }}</span>
+            <span>👁 {{ topic.views || 0 }} просмотров</span>
           </div>
-          <div class="post-content">
+        </div>
+
+        <div class="posts-list">
+          <div v-if="posts.length === 0" class="empty-posts">
+            <p>😔 В этой теме пока нет сообщений. Будьте первым!</p>
+          </div>
+          <div v-for="post in posts" :key="post.id" class="post-card">
             <div class="post-header">
-              <span class="post-date">{{ formatDateTime(post.created_at) }}</span>
-              <button v-if="authStore.isLoggedIn" @click="likePost(post.id)" class="like-btn">
-                ❤ {{ post.likes_count || 0 }}
-              </button>
+              <div class="post-author">
+                <span class="author-avatar">👤</span>
+                <span class="author-name">{{ post.author?.username || 'Пользователь' }}</span>
+                <span class="post-date">{{ formatDate(post.created_at) }}</span>
+              </div>
+              <div class="post-likes">
+                <button 
+                  @click="toggleLike(post.id)" 
+                  class="like-btn"
+                  :class="{ liked: post.is_liked }"
+                >
+                  ❤️ {{ post.likes || 0 }}
+                </button>
+              </div>
             </div>
-            <div class="post-message">{{ post.content }}</div>
+            <div class="post-content">
+              <p>{{ post.content }}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-warning">
-        <p>⚠️ Чтобы отвечать и ставить лайки, подтвердите Email.</p>
-        <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
-      </div>
-      <div v-else-if="authStore.isLoggedIn && !topic?.is_locked" class="reply-section">
-        <h3>Ваш ответ</h3>
-        <textarea v-model="replyContent" placeholder="Напишите ваш ответ..." rows="5" class="reply-input"></textarea>
-        <button @click="submitReply" :disabled="!replyContent.trim() || submitting" class="submit-reply-btn">
-          {{ submitting ? 'Отправка...' : '📤 Отправить ответ' }}
-        </button>
-      </div>
-      <div v-else-if="!authStore.isLoggedIn" class="login-prompt">
-        <router-link to="/login">Войдите</router-link> или <router-link to="/register">зарегистрируйтесь</router-link>
-      </div>
+        <div class="reply-section" v-if="authStore.isLoggedIn">
+          <h3>Ответить в тему</h3>
+          <textarea 
+            v-model="replyContent" 
+            class="reply-input" 
+            rows="4" 
+            placeholder="Введите ваш ответ..."
+          ></textarea>
+          <button @click="addReply" :disabled="!replyContent.trim() || sendingReply" class="reply-btn">
+            {{ sendingReply ? 'Отправка...' : 'Отправить ответ' }}
+          </button>
+        </div>
+        <div v-else class="login-prompt">
+          <p>🔐 <router-link to="/login">Войдите</router-link>, чтобы оставить ответ</p>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { forumAPI } from '@/api';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 
 const topic = ref(null);
 const posts = ref([]);
-const loading = ref(true);
 const replyContent = ref('');
-const submitting = ref(false);
+const sendingReply = ref(false);
 
-const formatDate = (date) => date ? new Date(date).toLocaleDateString('ru-RU') : '';
-const formatDateTime = (date) => date ? new Date(date).toLocaleString('ru-RU') : '';
-const getInitials = (name) => name?.charAt(0).toUpperCase() || '?';
-
-const loadTopic = async () => {
-  try {
-    const data = await forumAPI.getTopic(route.params.id);
-    topic.value = data;
-    posts.value = data.posts || [];
-  } catch (err) {
-    console.error(err);
-  } finally {
-    loading.value = false;
+const loadData = () => {
+  const topics = JSON.parse(localStorage.getItem('forum_topics') || '[]');
+  const topicId = parseInt(route.params.id);
+  topic.value = topics.find(t => t.id === topicId);
+  
+  if (!topic.value) return;
+  
+  // Увеличиваем просмотры (один раз за сессию)
+  const viewedKey = `topic_viewed_${topicId}`;
+  if (!sessionStorage.getItem(viewedKey)) {
+    topic.value.views = (topic.value.views || 0) + 1;
+    sessionStorage.setItem(viewedKey, 'true');
+    const allTopics = JSON.parse(localStorage.getItem('forum_topics') || '[]');
+    const index = allTopics.findIndex(t => t.id === topicId);
+    if (index !== -1) {
+      allTopics[index].views = topic.value.views;
+      localStorage.setItem('forum_topics', JSON.stringify(allTopics));
+    }
   }
+  
+  const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}');
+  posts.value = postsStore[topicId] || [];
 };
 
-const submitReply = async () => {
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now - d;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  if (days === 0) {
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (1000 * 60));
+      return minutes === 0 ? 'только что' : `${minutes} мин назад`;
+    }
+    return `${hours} ч назад`;
+  } else if (days === 1) {
+    return 'вчера';
+  } else if (days < 7) {
+    return `${days} дн назад`;
+  }
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
+
+const goBack = () => {
+  router.push('/forum');
+};
+
+const toggleLike = (postId) => {
+  if (!authStore.isLoggedIn) {
+    alert('Войдите в аккаунт, чтобы ставить лайки');
+    return;
+  }
+  
+  const post = posts.value.find(p => p.id === postId);
+  if (!post) return;
+  
+  if (post.is_liked) {
+    post.likes--;
+    post.is_liked = false;
+  } else {
+    post.likes++;
+    post.is_liked = true;
+  }
+  
+  const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}');
+  postsStore[topic.value.id] = posts.value;
+  localStorage.setItem('forum_posts_store', JSON.stringify(postsStore));
+};
+
+const addReply = async () => {
   if (!replyContent.value.trim()) return;
-  if (!authStore.isLoggedIn) return;
-  if (!authStore.user.emailVerified) {
-    alert('Подтвердите email для участия в обсуждении');
+  if (!authStore.isLoggedIn) {
+    alert('Необходимо авторизоваться');
     return;
   }
-  submitting.value = true;
+  
+  sendingReply.value = true;
+  
   try {
-    const newPost = await forumAPI.createPost({ topicId: route.params.id, content: replyContent.value });
-    posts.value.push({ ...newPost, author_name: authStore.user.username, likes_count: 0 });
+    const currentUser = authStore.user?.username || authStore.user?.email || 'Пользователь';
+    
+    const newPost = {
+      id: Date.now(),
+      author: { username: currentUser },
+      content: replyContent.value,
+      created_at: new Date().toISOString(),
+      likes: 0,
+      is_liked: false
+    };
+    
+    posts.value.push(newPost);
+    
+    const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}');
+    postsStore[topic.value.id] = posts.value;
+    localStorage.setItem('forum_posts_store', JSON.stringify(postsStore));
+    
     replyContent.value = '';
-  } catch (err) {
-    console.error(err);
-    alert('Ошибка отправки сообщения');
+  } catch (error) {
+    console.error('Ошибка добавления ответа:', error);
+    alert('Ошибка при добавлении ответа');
   } finally {
-    submitting.value = false;
+    sendingReply.value = false;
   }
 };
 
-const likePost = async (postId) => {
-  if (!authStore.isLoggedIn) return;
-  if (!authStore.user.emailVerified) {
-    alert('Подтвердите email для взаимодействия');
-    return;
-  }
-  try {
-    const result = await forumAPI.likePost(postId);
-    const post = posts.value.find(p => p.id === postId);
-    if (post) post.likes_count = result.likes_count;
-  } catch (err) {
-    console.error(err);
-  }
+let refreshTimer = null;
+const refreshData = () => {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    loadData();
+  }, 100);
 };
 
-onMounted(loadTopic);
+onMounted(() => {
+  loadData();
+  window.addEventListener('focus', refreshData);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshData();
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('focus', refreshData);
+  document.removeEventListener('visibilitychange', refreshData);
+  if (refreshTimer) clearTimeout(refreshTimer);
+});
 </script>
 
-
 <style scoped>
-.forum-topic-page {
-  background: #000000;
-  color: #ffffff;
-  min-height: 100vh;
-  padding: 40px 0;
+.topic-page {
+  min-height: calc(100vh - var(--header-height, 60px) - var(--footer-height, 60px));
+  padding: 30px 0 50px;
+  background: var(--color-background, #0a0a0a);
 }
-.container {
-  max-width: 1200px;
+
+.topic-container {
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 20px;
 }
+
 .back-btn {
-  background: none;
-  border: none;
-  color: #80832A;
+  background: rgba(128, 131, 42, 0.2);
+  border: 1px solid var(--color-secondary, #9ea344);
+  color: var(--color-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   margin-bottom: 20px;
 }
+
 .back-btn:hover {
-  color: #07660C;
+  background: var(--color-secondary);
+  color: white;
 }
-.topic-header h1 {
-  font-size: 1.8rem;
-  color: #07660C;
-  margin-bottom: 15px;
+
+.topic-header {
+  background: var(--color-panel, #1a1a1a);
+  border-radius: 12px;
+  padding: 20px 25px;
+  margin-bottom: 25px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
 }
+
+.topic-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-primary, #07660c);
+  margin: 0 0 12px 0;
+}
+
 .topic-meta {
   display: flex;
-  flex-wrap: wrap;
   gap: 20px;
-  color: #80832A;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
-}
-.locked-badge {
-  display: inline-block;
-  background: #ff4444;
-  color: white;
-  padding: 5px 12px;
-  border-radius: 20px;
   font-size: 0.8rem;
+  color: var(--color-text-muted, #aaa);
+  flex-wrap: wrap;
 }
+
 .posts-list {
-  margin: 30px 0;
-}
-.post-card {
   display: flex;
-  gap: 20px;
-  background: #202020;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.empty-posts {
+  text-align: center;
+  padding: 40px;
+  background: var(--color-panel, #1a1a1a);
   border-radius: 12px;
-  margin-bottom: 20px;
+  color: var(--color-text-muted, #aaa);
+}
+
+.post-card {
+  background: var(--color-panel, #1a1a1a);
+  border-radius: 12px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
   overflow: hidden;
 }
-.post-sidebar {
-  width: 150px;
-  background: #2B2B2B;
-  padding: 20px;
-  text-align: center;
-}
-.post-author-avatar {
-  width: 60px;
-  height: 60px;
-  background: #07660C;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 0 auto 10px;
-}
-.post-author-name {
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-.post-author-role {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-  display: inline-block;
-  margin-bottom: 10px;
-}
-.post-author-role.admin { background: #ff4444; }
-.post-author-role.moderator { background: #ffaa00; }
-.post-author-role.user { background: #80832A; }
-.post-number {
-  color: #80832A;
-  font-size: 0.8rem;
-}
-.post-content {
-  flex: 1;
-  padding: 20px;
-}
+
 .post-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #2B2B2B;
+  padding: 12px 18px;
+  background: rgba(7, 102, 12, 0.1);
+  border-bottom: 1px solid rgba(128, 131, 42, 0.2);
+  flex-wrap: wrap;
+  gap: 10px;
 }
+
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.author-name {
+  font-weight: 600;
+  color: var(--color-primary, #07660c);
+}
+
 .post-date {
-  color: #80832A;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #aaa);
 }
+
 .like-btn {
   background: none;
   border: none;
-  color: #80832A;
+  font-size: 0.9rem;
   cursor: pointer;
-  font-size: 1rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: #aaa;
 }
-.like-btn:hover {
+
+.like-btn.liked {
   color: #ff4444;
 }
-.post-message {
+
+.post-content {
+  padding: 18px;
+}
+
+.post-content p {
+  margin: 0;
   line-height: 1.6;
+  color: var(--color-text, #ffffff);
   white-space: pre-wrap;
 }
+
 .reply-section {
-  background: #202020;
+  background: var(--color-panel, #1a1a1a);
   border-radius: 12px;
-  padding: 25px;
-  margin-top: 30px;
+  padding: 20px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
 }
+
 .reply-section h3 {
-  color: #07660C;
-  margin-bottom: 15px;
+  color: var(--color-secondary, #9ea344);
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
 }
+
 .reply-input {
   width: 100%;
-  padding: 15px;
-  background: #2B2B2B;
-  border: 1px solid #80832A;
-  border-radius: 8px;
-  color: #fff;
-  font-family: inherit;
+  padding: 12px 15px;
+  background: var(--color-panel-light, #2a2a2a);
+  border: 1px solid rgba(128, 131, 42, 0.3);
+  border-radius: 10px;
+  color: var(--color-text, #ffffff);
+  font-size: 0.9rem;
   resize: vertical;
+  font-family: inherit;
+  margin-bottom: 15px;
 }
-.submit-reply-btn {
-  margin-top: 15px;
-  background: #07660C;
+
+.reply-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #07660c);
+}
+
+.reply-btn {
+  padding: 10px 24px;
+  background: var(--color-primary, #07660c);
   border: none;
+  border-radius: 8px;
   color: white;
-  padding: 12px 24px;
-  border-radius: 30px;
-  cursor: pointer;
+  font-size: 0.9rem;
   font-weight: 600;
+  cursor: pointer;
 }
-.submit-reply-btn:disabled {
+
+.reply-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.login-prompt, .locked-prompt {
+
+.login-prompt {
   text-align: center;
-  padding: 40px;
-  background: #202020;
+  padding: 30px;
+  background: var(--color-panel, #1a1a1a);
   border-radius: 12px;
-  margin-top: 30px;
-}
-.login-prompt a {
-  color: #07660C;
-  text-decoration: none;
-}
-.loading-state {
-  text-align: center;
-  padding: 60px;
-}
-.spinner {
-  border: 4px solid #2B2B2B;
-  border-top: 4px solid #07660C;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-@media (max-width: 768px) {
-  .post-card {
-    flex-direction: column;
-  }
-  .post-sidebar {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-  }
-  .post-author-avatar {
-    margin: 0;
-  }
 }
 
-.verification-warning {
-  text-align: center; padding: 20px; background: #202020; border-radius: 8px; margin: 20px 0;
+.login-prompt a {
+  color: var(--color-primary, #07660c);
+  text-decoration: none;
 }
-.verify-link {
-  background: #07660c; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 10px;
+
+.error-state {
+  text-align: center;
+  padding: 50px;
+  background: var(--color-panel, #1a1a1a);
+  border-radius: 12px;
+}
+
+.error-state h2 {
+  color: #ff4444;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 768px) {
+  .topic-title {
+    font-size: 1.3rem;
+  }
+  
+  .post-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

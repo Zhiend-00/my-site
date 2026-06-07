@@ -251,29 +251,47 @@
     </div>
 
     <!-- Модальное окно: Изменение пароля -->
-    <div v-if="showChangePasswordModal" class="modal-overlay" @click.self="closeChangePasswordModal">
-      <div class="modal-content">
-        <h3>Изменение пароля</h3>
-        <form @submit.prevent="changePassword">
-          <div class="form-group">
-            <label>Текущий пароль</label>
-            <input v-model="passwordForm.currentPassword" type="password" required />
-          </div>
-          <div class="form-group">
-            <label>Новый пароль</label>
-            <input v-model="passwordForm.newPassword" type="password" required minlength="6" />
-          </div>
-          <div class="form-group">
-            <label>Подтверждение нового пароля</label>
-            <input v-model="passwordForm.confirmPassword" type="password" required />
-          </div>
-          <div class="modal-actions">
-            <button type="submit" class="save-btn" :disabled="passwordSaving">Сохранить</button>
-            <button type="button" class="cancel-btn" @click="closeChangePasswordModal">Отмена</button>
-          </div>
-        </form>
+<div v-if="showChangePasswordModal" class="modal-overlay" @click.self="closeChangePasswordModal">
+  <div class="modal-content">
+    <h3>Изменение пароля</h3>
+    <form @submit.prevent="changePassword">
+      <div class="form-group">
+        <label>Текущий пароль</label>
+        <input 
+          v-model="passwordForm.currentPassword" 
+          type="password" 
+          required 
+          placeholder="Введите текущий пароль"
+        />
       </div>
-    </div>
+      <div class="form-group">
+        <label>Новый пароль</label>
+        <input 
+          v-model="passwordForm.newPassword" 
+          type="password" 
+          required 
+          minlength="6"
+          placeholder="Минимум 6 символов"
+        />
+      </div>
+      <div class="form-group">
+        <label>Подтверждение нового пароля</label>
+        <input 
+          v-model="passwordForm.confirmPassword" 
+          type="password" 
+          required 
+          placeholder="Повторите новый пароль"
+        />
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="save-btn" :disabled="passwordSaving">
+          {{ passwordSaving ? 'Сохранение...' : 'Сохранить' }}
+        </button>
+        <button type="button" class="cancel-btn" @click="closeChangePasswordModal">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
   </div>
 </template>
 
@@ -506,21 +524,57 @@ const closeChangePasswordModal = () => {
 }
 
 const changePassword = async () => {
+  // Проверка на пустые поля
+  if (!passwordForm.value.currentPassword) {
+    alert('Введите текущий пароль');
+    return;
+  }
+  if (!passwordForm.value.newPassword) {
+    alert('Введите новый пароль');
+    return;
+  }
+  if (!passwordForm.value.confirmPassword) {
+    alert('Подтвердите новый пароль');
+    return;
+  }
+  
+  // Проверка длины нового пароля
+  if (passwordForm.value.newPassword.length < 6) {
+    alert('Новый пароль должен содержать минимум 6 символов');
+    return;
+  }
+  
+  // Проверка совпадения паролей
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    alert('Пароли не совпадают')
-    return
+    alert('Новый пароль и подтверждение не совпадают');
+    return;
   }
-  passwordSaving.value = true
+  
+  passwordSaving.value = true;
+  
   try {
-    // await authAPI.changePassword(passwordForm.value)
-    alert('Функция смены пароля в разработке')
-    closeChangePasswordModal()
-  } catch (e) {
-    alert('Ошибка: ' + e.message)
+    const response = await authAPI.changePassword({
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword
+    });
+    
+    alert(response.message || 'Пароль успешно изменен!');
+    closeChangePasswordModal();
+    
+    // Очищаем форму
+    passwordForm.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    };
+    
+  } catch (error) {
+    console.error('Ошибка смены пароля:', error);
+    alert(error.message || 'Ошибка при смене пароля. Проверьте правильность текущего пароля.');
   } finally {
-    passwordSaving.value = false
+    passwordSaving.value = false;
   }
-}
+};
 
 const logout = () => {
   authStore.logout()

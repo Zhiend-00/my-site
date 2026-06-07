@@ -2,7 +2,7 @@
   <div class="manga-page" v-if="manga">
     <div class="container">
       <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-banner">
-        <span>⚠️ Ваш Email не подтверждён. Оценка и комментарии недоступны.</span>
+        <span>⚠️ Ваш Email не подтверждён. Оценка, комментарии и рецензии недоступны.</span>
         <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
       </div>
 
@@ -43,10 +43,37 @@
             <button class="btn-read" @click="startReading">
               {{ hasProgress ? 'Продолжить читать' : 'Читать с начала' }}
             </button>
+            <button class="btn-reviews" @click="toggleReviewsBlock">Рецензии</button>
           </div>
         </div>
       </div>
 
+      <!-- Блок рецензий (появляется по клику) -->
+      <div v-if="showReviews" class="reviews-section">
+        <div class="reviews-header">
+          <h2>Рецензии</h2>
+          <button 
+            v-if="authStore.isLoggedIn && authStore.user?.emailVerified" 
+            class="add-review-btn" 
+            @click="openReviewModal"
+          >
+            + Добавить рецензию
+          </button>
+        </div>
+        <div v-if="reviewsLoading" class="loading">Загрузка рецензий...</div>
+        <div v-else-if="reviewsList.length === 0" class="no-reviews">Пока нет рецензий. Будьте первым!</div>
+        <div v-else class="reviews-list">
+          <div v-for="review in reviewsList" :key="review.id" class="review-card">
+            <div class="review-header">
+              <span class="review-author">{{ review.authorName }}</span>
+              <span class="review-date">{{ formatDate(review.createdAt) }}</span>
+            </div>
+            <div class="review-text">{{ review.text }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Главы -->
       <div class="chapters-section">
         <div class="chapters-header">
           <h2>Список глав</h2>
@@ -63,6 +90,7 @@
         </div>
       </div>
 
+      <!-- Комментарии -->
       <div class="comments-section">
         <h2>Комментарии</h2>
         <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-warning">
@@ -86,6 +114,26 @@
           </div>
           <div v-if="comments.length === 0" class="no-comments">Пока нет комментариев</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно добавления рецензии -->
+    <div v-if="showReviewModal" class="modal-overlay" @click.self="closeReviewModal">
+      <div class="modal-content">
+        <h3>Добавить рецензию</h3>
+        <form @submit.prevent="submitReview">
+          <div class="form-group">
+            <label>Ваша рецензия (минимум 10 символов)</label>
+            <textarea v-model="reviewText" rows="6" placeholder="Поделитесь мнением о манге..." required></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" :disabled="reviewSending" class="save-btn">
+              {{ reviewSending ? 'Отправка...' : 'Отправить на модерацию' }}
+            </button>
+            <button type="button" class="cancel-btn" @click="closeReviewModal">Отмена</button>
+          </div>
+          <p v-if="reviewSubmitSuccess" class="success-msg">Рецензия отправлена на модерацию!</p>
+        </form>
       </div>
     </div>
   </div>
@@ -118,6 +166,15 @@ const userRating = ref(0)
 const comments = ref([])
 const newComment = ref('')
 const commentSending = ref(false)
+
+// Рецензии
+const showReviews = ref(false)
+const reviewsList = ref([])
+const reviewsLoading = ref(false)
+const showReviewModal = ref(false)
+const reviewText = ref('')
+const reviewSending = ref(false)
+const reviewSubmitSuccess = ref(false)
 
 const orderedChapters = computed(() => {
   if (!manga.value?.chapters) return []
@@ -161,10 +218,7 @@ const goToChapter = (chapterId) => router.push(`/chapter/${chapterId}`)
 
 const rateManga = async (rating) => {
   if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!authStore.user.emailVerified) {
-    alert('Подтвердите email для оценки манги');
-    return;
-  }
+  if (!authStore.user.emailVerified) { alert('Подтвердите email для оценки манги'); return; }
   userRating.value = rating
   try {
     await mangaAPI.rate(manga.value.id, rating)
@@ -173,20 +227,17 @@ const rateManga = async (rating) => {
   } catch (e) { alert('Ошибка при оценке') }
 }
 
+// Комментарии
 const loadComments = async () => {
   try {
     const data = await mangaAPI.getComments(manga.value.id)
     comments.value = data || []
   } catch (e) {}
 }
-
 const submitComment = async () => {
   if (!newComment.value.trim()) return
   if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!authStore.user.emailVerified) {
-    alert('Подтвердите email для комментирования');
-    return;
-  }
+  if (!authStore.user.emailVerified) { alert('Подтвердите email для комментирования'); return; }
   commentSending.value = true
   try {
     const comment = await mangaAPI.addComment(manga.value.id, newComment.value)
@@ -194,6 +245,53 @@ const submitComment = async () => {
     newComment.value = ''
   } catch (e) { alert('Ошибка отправки') }
   finally { commentSending.value = false }
+}
+
+// Рецензии
+const loadReviews = async () => {
+  if (!manga.value) return
+  reviewsLoading.value = true
+  try {
+    const data = await reviewsAPI.getByManga(manga.value.id)
+    reviewsList.value = data
+  } catch (e) { console.error(e) }
+  finally { reviewsLoading.value = false }
+}
+const toggleReviewsBlock = () => {
+  showReviews.value = !showReviews.value
+  if (showReviews.value && reviewsList.value.length === 0) {
+    loadReviews()
+  }
+}
+const openReviewModal = () => {
+  if (!authStore.isLoggedIn) { router.push('/login'); return }
+  if (!authStore.user.emailVerified) { alert('Подтвердите email для добавления рецензии'); return; }
+  showReviewModal.value = true
+  reviewText.value = ''
+  reviewSubmitSuccess.value = false
+}
+const closeReviewModal = () => {
+  showReviewModal.value = false
+  reviewText.value = ''
+  reviewSubmitSuccess.value = false
+}
+const submitReview = async () => {
+  if (!reviewText.value.trim() || reviewText.value.trim().length < 10) {
+    alert('Рецензия должна содержать минимум 10 символов')
+    return
+  }
+  reviewSending.value = true
+  try {
+    await reviewsAPI.create(manga.value.id, reviewText.value)
+    reviewSubmitSuccess.value = true
+    setTimeout(() => {
+      closeReviewModal()
+    }, 2000)
+  } catch (e) {
+    alert('Ошибка отправки: ' + (e.message || 'Попробуйте позже'))
+  } finally {
+    reviewSending.value = false
+  }
 }
 
 const loadData = async () => {
@@ -233,9 +331,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ===== ОСНОВНЫЕ СТИЛИ СТРАНИЦЫ (оставляем как было) ===== */
 .manga-page {
   padding: 40px 0;
-  background: #000;
+  background: #121212;
   color: #fff;
 }
 .container {
@@ -283,9 +382,6 @@ h1 {
   align-items: center;
   gap: 15px;
 }
-.rating-label {
-  color: #80832a;
-}
 .rating-stars {
   display: flex;
   align-items: center;
@@ -295,18 +391,12 @@ h1 {
   font-size: 1.5rem;
   color: #555;
   cursor: pointer;
-  transition: color 0.2s;
 }
 .star.filled {
   color: #ffd700;
 }
 .star.active {
   color: #ffaa00;
-}
-.rating-value {
-  margin-left: 10px;
-  color: #fff;
-  font-weight: 600;
 }
 .genres {
   display: flex;
@@ -323,15 +413,14 @@ h1 {
 .action-buttons {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
 }
-.btn-bookmark,
-.btn-read {
+.btn-bookmark, .btn-read, .btn-reviews {
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
 }
 .btn-bookmark {
   background: #80832a;
@@ -341,10 +430,13 @@ h1 {
   background: #07660c;
   color: white;
 }
-.btn-bookmark:hover,
-.btn-read:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.1);
+.btn-reviews {
+  background: #2b2b2b;
+  border: 1px solid #80832a;
+  color: white;
+}
+.btn-reviews:hover {
+  background: #80832a;
 }
 .dropdown {
   position: relative;
@@ -369,11 +461,69 @@ h1 {
   color: white;
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s;
 }
 .dropdown-menu button:hover {
   background: #07660c;
 }
+
+/* ===== РЕЦЕНЗИИ ===== */
+.reviews-section {
+  margin-top: 40px;
+  background: #202020;
+  border-radius: 12px;
+  padding: 20px;
+}
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.reviews-header h2 {
+  color: #07660c;
+  margin: 0;
+}
+.add-review-btn {
+  background: #80832a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.review-card {
+  background: #2b2b2b;
+  border-radius: 10px;
+  padding: 15px;
+}
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #80832a;
+  font-size: 0.9rem;
+}
+.review-author {
+  font-weight: 600;
+  color: #07660c;
+}
+.review-text {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.no-reviews {
+  text-align: center;
+  padding: 30px;
+  color: #80832a;
+}
+
+/* ===== ГЛАВЫ ===== */
 .chapters-section {
   margin-top: 40px;
 }
@@ -403,20 +553,12 @@ h1 {
   padding: 15px 20px;
   border-bottom: 1px solid #2b2b2b;
   cursor: pointer;
-  transition: background 0.2s;
 }
 .chapter-item:hover {
   background: #2b2b2b;
 }
-.chapter-title {
-  color: #80832a;
-  flex: 1;
-  margin-left: 20px;
-}
-.chapter-date {
-  font-size: 0.85rem;
-  color: #666;
-}
+
+/* ===== КОММЕНТАРИИ ===== */
 .comments-section {
   margin-top: 50px;
 }
@@ -444,22 +586,6 @@ h1 {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
-}
-.comment-form button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.login-prompt {
-  text-align: center;
-  padding: 20px;
-  background: #202020;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-.login-prompt a {
-  color: #07660c;
-  text-decoration: none;
 }
 .comments-list {
   display: flex;
@@ -482,33 +608,107 @@ h1 {
   font-weight: 600;
   color: #fff;
 }
-.comment-content {
-  color: #ddd;
-  line-height: 1.5;
-}
-.no-comments {
-  text-align: center;
-  color: #80832a;
-  padding: 20px;
-}
-.loading,
-.error {
+.loading, .error {
   text-align: center;
   padding: 50px;
   color: white;
 }
-
-.verification-banner {
-  background: rgba(255,165,0,0.15); border: 1px solid #ffaa00; padding: 12px 20px;
-  border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+.verification-banner, .verification-warning {
+  background: rgba(255,165,0,0.15);
+  border: 1px solid #ffaa00;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.verify-link { background: #07660c; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; }
-.verification-warning { text-align: center; padding: 20px; background: #202020; border-radius: 8px; margin-bottom: 20px; }
+.verify-link {
+  background: #07660c;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.login-prompt {
+  text-align: center;
+  padding: 20px;
+  background: #202020;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.login-prompt a {
+  color: #07660c;
+}
 
-.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-.btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background var(--transition-fast); }
-.btn-track { background: var(--color-secondary); color: white; }
-.btn-read { background: var(--color-primary); color: white; }
-.btn-bookmark { background: var(--color-panel-light); border: 1px solid var(--color-secondary); color: white; }
-/* остальные стили из исходного кода, но цвета обновлены */
+/* ===== МОДАЛЬНОЕ ОКНО (стиль как на всём сайте) ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #202020;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 550px;
+  padding: 25px;
+  border: 1px solid #80832a;
+}
+.modal-content h3 {
+  color: #07660c;
+  margin-bottom: 20px;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #e0e0e0;
+}
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  background: #2b2b2b;
+  border: 1px solid #80832a;
+  border-radius: 8px;
+  color: white;
+  font-family: inherit;
+  resize: vertical;
+}
+.modal-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+.save-btn, .cancel-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.save-btn {
+  background: #07660c;
+  color: white;
+}
+.cancel-btn {
+  background: #b91c1c;
+  color: white;
+}
+.success-msg {
+  color: #00cc44;
+  margin-top: 15px;
+  text-align: center;
+}
 </style>

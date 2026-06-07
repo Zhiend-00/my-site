@@ -17,7 +17,7 @@
         </div>
 
         <div v-else class="status-message error">
-          <span class="icon">❌</span>
+          <span class="icon"></span>
           <h2>Ошибка подтверждения</h2>
           <p>{{ errorMessage }}</p>
           <div class="actions">

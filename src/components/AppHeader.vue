@@ -22,7 +22,7 @@ const handleLogout = () => {
         <router-link to="/catalog" class="nav-link">Каталог</router-link>
         <router-link to="/forum" class="nav-link">Форум</router-link>
         <router-link v-if="authStore.isLoggedIn" to="/notifications" class="nav-link">
-        Уведомления
+          Уведомления
         </router-link>
 
         <div v-if="authStore.isLoggedIn" class="user-menu">
@@ -113,11 +113,22 @@ const handleLogout = () => {
 .admin-link:hover {
   color: var(--color-primary-hover) !important;
 }
+
+/* 🔧 ИСПРАВЛЕНИЕ: горизонтальное расположение элементов внутри user-menu */
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 @media (max-width: 768px) {
   .logo-link {
     font-size: 1.2rem;
   }
   .nav {
+    gap: var(--spacing-sm);
+  }
+  .user-menu {
     gap: var(--spacing-sm);
   }
 }

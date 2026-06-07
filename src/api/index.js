@@ -1,7 +1,6 @@
-// src/api/index.js
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: API_BASE
@@ -31,6 +30,7 @@ async function request(endpoint, options = {}) {
   return res.json();
 }
 
+// Добавьте в объект authAPI
 export const authAPI = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -39,6 +39,8 @@ export const authAPI = {
   forgotPassword: (email) => request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (token, password) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
   resendVerification: () => request('/api/auth/resend-verification', { method: 'POST' }),
+  // ДОБАВЬТЕ ЭТУ ФУНКЦИЮ:
+  changePassword: (data) => request('/api/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export const mangaAPI = {
@@ -64,6 +66,23 @@ export const chaptersAPI = {
   create: (data) => request('/api/chapters', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => request(`/api/chapters/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id) => request(`/api/chapters/${id}`, { method: 'DELETE' }),
+  // НОВЫЙ МЕТОД: получает количество страниц главы (заглушка)
+  getPagesCount: async (chapterId) => {
+    try {
+      // Пытаемся получить реальные страницы через API
+      const data = await request(`/api/admin/chapter-pages-count/${chapterId}`);
+      return data.pagesCount || 0;
+    } catch (error) {
+      console.warn(`Не удалось получить количество страниц для главы ${chapterId}:`, error.message);
+      // Если API не работает, пробуем получить страницы через getPages
+      try {
+        const pagesData = await request(`/api/chapters/${chapterId}/pages`);
+        return (pagesData.pages || []).length;
+      } catch {
+        return 0;
+      }
+    }
+  },
 };
 
 export const forumAPI = {
@@ -137,6 +156,9 @@ export const adminAPI = {
   updateFeedback: (id, data) => request(`/api/admin/feedback/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteFeedback: (id) => request(`/api/admin/feedback/${id}`, { method: 'DELETE' }),
   replyFeedback: (id, message) => request(`/api/admin/feedback/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) }),
+  getStats: () => request('/api/admin/stats'),
+  // НОВЫЙ МЕТОД: получить количество страниц главы
+  getChapterPagesCount: (chapterId) => request(`/api/admin/chapter-pages-count/${chapterId}`),
 };
 
 export const getCoverUrl = (coverPath) => {
@@ -148,5 +170,6 @@ export const getCoverUrl = (coverPath) => {
   if (!isNaN(parseInt(coverPath))) {
     return `${API_BASE}/api/cover/${coverPath}`;
   }
-  return `${API_BASE}/api/cover/default`;
+  if (coverPath.startsWith('/uploads/')) return `${API_BASE}${coverPath}`;
+  return `${API_BASE}${coverPath}`;
 };

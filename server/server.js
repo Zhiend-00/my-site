@@ -1,4 +1,3 @@
-// server/server.js
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -38,6 +37,38 @@ const AVATARS_DIR = path.join(PUBLIC_DIR, 'avatars');
 
 const emptyPNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const tempDir = path.join(__dirname, 'uploads/temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    cb(null, tempDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
+      cb(null, true);
+    } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+               file.mimetype === 'application/vnd.ms-excel' ||
+               file.originalname.endsWith('.xlsx') || 
+               file.originalname.endsWith('.xls')) {
+      cb(null, true);
+    } else if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Неверный формат файла'), false);
+    }
+  }
+});
+
 // Почтовый транспорт
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
@@ -48,8 +79,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
-const upload = multer({ dest: 'uploads/temp/' });
 
 async function sendVerificationEmail(email, token) {
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -75,7 +104,7 @@ async function sendAdminFeedbackNotification(feedback) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) {
     console.warn('⚠️ ADMIN_EMAIL не задан в .env, уведомление не отправлено');
-    return; // молча выходим, но не ломаем запрос
+    return;
   }
 
   try {
@@ -142,12 +171,12 @@ async function createNotification(userId, type, message, link = null) {
   } catch (e) {
     console.error('Ошибка создания уведомления:', e);
   }
-}
+};
 
 // Middleware
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(PUBLIC_DIR));
 
 app.use((req, res, next) => {
@@ -290,28 +319,47 @@ app.get('/api/manga/:id', async (req, res) => {
 });
 
 app.post('/api/manga', authenticateToken, requireAdmin, async (req, res) => {
-  const { title, description, author, cover_image, status, genres, year } = req.body;
-  const newManga = await prisma.manga.create({
-    data: {
-      title,
-      description: description || '',
-      coverImage: cover_image || '/uploads/covers/default.png',
-      author: author || '',
-      status: status || 'ongoing',
-      year: year ? parseInt(year) : null,
-      genres: genres || [],
-      alternativeTitles: [],
-    },
-  });
-  res.status(201).json(newManga);
+  try {
+    const { title, description, author, cover_image, status, genres, year, alternative_titles, artist } = req.body;
+    
+    const newManga = await prisma.manga.create({
+      data: {
+        title,
+        description: description || '',
+        coverImage: cover_image || '/uploads/covers/default.png',
+        author: author || '',
+        artist: artist || '',
+        status: status || 'ongoing',
+        year: year ? parseInt(year) : null,
+        genres: genres || [],
+        alternativeTitles: alternative_titles || [],
+      },
+    });
+    
+    res.status(201).json(newManga);
+  } catch (error) {
+    console.error('Ошибка создания манги:', error);
+    res.status(500).json({ message: 'Ошибка создания манги: ' + error.message });
+  }
 });
 
 app.patch('/api/manga/:id', authenticateToken, requireAdmin, async (req, res) => {
   const id = BigInt(req.params.id);
-  const { title, description, author, cover_image, status, genres, year } = req.body;
+  const { title, description, author, cover_image, status, genres, year, artist, alternative_titles } = req.body;
   const updated = await prisma.manga.update({
     where: { id },
-    data: { title, description, coverImage: cover_image, author, status, year: year ? parseInt(year) : null, genres, updatedAt: new Date() },
+    data: { 
+      title, 
+      description, 
+      coverImage: cover_image, 
+      author, 
+      artist,
+      status, 
+      year: year ? parseInt(year) : null, 
+      genres, 
+      alternativeTitles: alternative_titles,
+      updatedAt: new Date() 
+    },
   });
   res.json(updated);
 });
@@ -456,7 +504,6 @@ app.post('/api/chapters', authenticateToken, requireAdmin, async (req, res) => {
     const chaptersCount = await prisma.chapter.count({ where: { mangaId: BigInt(manga_id) } });
     await prisma.manga.update({ where: { id: BigInt(manga_id) }, data: { chaptersCount } });
 
-    // Уведомления подписчикам
     const subscribers = await prisma.chapterSubscription.findMany({
       where: { mangaId: BigInt(manga_id) },
       select: { userId: true }
@@ -485,13 +532,44 @@ app.post('/api/chapters', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 app.patch('/api/chapters/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const id = parseFloat(req.params.id);
-  const { title, chapter_number } = req.body;
-  const updated = await prisma.chapter.update({
-    where: { id },
-    data: { title, chapterNumber: chapter_number, updatedAt: new Date() },
-  });
-  res.json(updated);
+  try {
+    const id = parseFloat(req.params.id);
+    const { title, chapter_number, manga_id } = req.body;
+    
+    // Проверяем, существует ли глава
+    const existingChapter = await prisma.chapter.findUnique({ where: { id } });
+    if (!existingChapter) {
+      return res.status(404).json({ message: 'Глава не найдена' });
+    }
+    
+    // Проверяем, не существует ли уже глава с таким номером в этой манге
+    if (chapter_number && chapter_number !== existingChapter.chapterNumber) {
+      const duplicate = await prisma.chapter.findFirst({
+        where: {
+          mangaId: existingChapter.mangaId,
+          chapterNumber: chapter_number,
+          id: { not: id }
+        }
+      });
+      if (duplicate) {
+        return res.status(400).json({ message: 'Глава с таким номером уже существует в этой манге' });
+      }
+    }
+    
+    const updated = await prisma.chapter.update({
+      where: { id },
+      data: { 
+        title: title !== undefined ? title : existingChapter.title,
+        chapterNumber: chapter_number !== undefined ? chapter_number : existingChapter.chapterNumber,
+        updatedAt: new Date() 
+      },
+    });
+    
+    res.json(updated);
+  } catch (error) {
+    console.error('Ошибка обновления главы:', error);
+    res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
+  }
 });
 
 app.delete('/api/chapters/:id', authenticateToken, requireAdmin, async (req, res) => {
@@ -502,6 +580,529 @@ app.delete('/api/chapters/:id', authenticateToken, requireAdmin, async (req, res
   const chaptersCount = await prisma.chapter.count({ where: { mangaId: chapter.mangaId } });
   await prisma.manga.update({ where: { id: chapter.mangaId }, data: { chaptersCount } });
   res.json({ message: 'Глава удалена' });
+});
+
+// ========== ЗАГРУЗКА ГЛАВЫ ZIP (исправленная) ==========
+app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.single('pages'), async (req, res) => {
+  try {
+    console.log('📤 Начало загрузки главы...');
+    console.log('Body:', req.body);
+    console.log('File:', req.file ? req.file.originalname : 'нет файла');
+    
+    const { mangaId, chapterNumber, title } = req.body;
+    
+    if (!mangaId || !chapterNumber) {
+      return res.status(400).json({ message: 'mangaId и chapterNumber обязательны' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+
+    const manga = await prisma.manga.findUnique({ where: { id: BigInt(mangaId) } });
+    if (!manga) {
+      return res.status(404).json({ message: 'Манга не найдена' });
+    }
+
+    // ПРОВЕРЯЕМ, существует ли уже такая глава
+    const existingChapter = await prisma.chapter.findFirst({
+      where: {
+        mangaId: BigInt(mangaId),
+        chapterNumber: parseInt(chapterNumber)
+      }
+    });
+
+    if (existingChapter) {
+      // Если глава существует, удаляем старые страницы и перезаписываем
+      console.log(`⚠️ Глава ${chapterNumber} уже существует, обновляем...`);
+      await prisma.page.deleteMany({ where: { chapterId: existingChapter.id } });
+      
+      const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
+      if (fs.existsSync(chapterDir)) {
+        fs.rmSync(chapterDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(chapterDir, { recursive: true });
+      
+      const zip = new AdmZip(req.file.path);
+      const entries = zip.getEntries();
+      
+      const imageEntries = entries.filter(entry => {
+        const ext = path.extname(entry.entryName).toLowerCase();
+        return !entry.isDirectory && ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
+      });
+      
+      imageEntries.sort((a, b) => {
+        const aName = path.basename(a.entryName);
+        const bName = path.basename(b.entryName);
+        return aName.localeCompare(bName, undefined, { numeric: true });
+      });
+
+      let pageNumber = 1;
+      const pagesData = [];
+      
+      for (const entry of imageEntries) {
+        const ext = path.extname(entry.entryName).toLowerCase();
+        const fileName = `${pageNumber}${ext}`;
+        const filePath = path.join(chapterDir, fileName);
+        fs.writeFileSync(filePath, entry.getData());
+        pagesData.push({
+          pageNumber: pageNumber,
+          imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNumber}/${fileName}`,
+        });
+        pageNumber++;
+      }
+
+      // Обновляем существующую главу
+      const updatedChapter = await prisma.chapter.update({
+        where: { id: existingChapter.id },
+        data: {
+          title: title || `Глава ${chapterNumber}`,
+          pagesCount: pagesData.length,
+          updatedAt: new Date()
+        }
+      });
+
+      for (const page of pagesData) {
+        await prisma.page.create({
+          data: {
+            chapterId: existingChapter.id,
+            pageNumber: page.pageNumber,
+            imageUrl: page.imageUrl,
+          },
+        });
+      }
+
+      fs.unlinkSync(req.file.path);
+      
+      console.log(`✅ Глава ${chapterNumber} обновлена, страниц: ${pagesData.length}`);
+      
+      return res.json({ 
+        message: `Глава ${chapterNumber} обновлена (${pagesData.length} стр.)`, 
+        chapter: updatedChapter
+      });
+    }
+
+    // Новая глава - создаем с нуля
+    const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
+    if (!fs.existsSync(chapterDir)) {
+      fs.mkdirSync(chapterDir, { recursive: true });
+    }
+
+    const zip = new AdmZip(req.file.path);
+    const entries = zip.getEntries();
+    
+    const imageEntries = entries.filter(entry => {
+      const ext = path.extname(entry.entryName).toLowerCase();
+      return !entry.isDirectory && ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
+    });
+    
+    imageEntries.sort((a, b) => {
+      const aName = path.basename(a.entryName);
+      const bName = path.basename(b.entryName);
+      return aName.localeCompare(bName, undefined, { numeric: true });
+    });
+
+    if (imageEntries.length === 0) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'В ZIP архиве нет изображений' });
+    }
+
+    let pageNumber = 1;
+    const pagesData = [];
+    
+    for (const entry of imageEntries) {
+      const ext = path.extname(entry.entryName).toLowerCase();
+      const fileName = `${pageNumber}${ext}`;
+      const filePath = path.join(chapterDir, fileName);
+      fs.writeFileSync(filePath, entry.getData());
+      pagesData.push({
+        pageNumber: pageNumber,
+        imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNumber}/${fileName}`,
+      });
+      pageNumber++;
+    }
+
+    fs.unlinkSync(req.file.path);
+
+    // Генерируем уникальный ID для главы
+    const chapterId = parseFloat(`${Date.now()}.${Math.floor(Math.random()*10000)}`);
+    
+    const chapter = await prisma.chapter.create({
+      data: {
+        id: chapterId,
+        mangaId: BigInt(mangaId),
+        chapterNumber: parseInt(chapterNumber),
+        title: title || `Глава ${chapterNumber}`,
+        pagesCount: pagesData.length,
+      },
+    });
+
+    for (const page of pagesData) {
+      await prisma.page.create({
+        data: {
+          chapterId: chapter.id,
+          pageNumber: page.pageNumber,
+          imageUrl: page.imageUrl,
+        },
+      });
+    }
+
+    const chaptersCount = await prisma.chapter.count({ where: { mangaId: BigInt(mangaId) } });
+    await prisma.manga.update({ 
+      where: { id: BigInt(mangaId) }, 
+      data: { chaptersCount } 
+    });
+
+    console.log(`✅ Новая глава ${chapterNumber} создана, страниц: ${pagesData.length}`);
+    
+    res.json({ 
+      message: `Глава ${chapterNumber} успешно загружена (${pagesData.length} стр.)`, 
+      chapter: {
+        id: chapter.id,
+        chapterNumber: chapter.chapterNumber,
+        title: chapter.title,
+        pagesCount: chapter.pagesCount
+      }
+    });
+  } catch (error) {
+    console.error('❌ Ошибка загрузки главы:', error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
+  }
+});
+
+// ========== ИМПОРТ ИЗ EXCEL (исправленный) ==========
+app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
+  try {
+    console.log('📥 Начало импорта из Excel...');
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+
+    // Читаем Excel файл
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    
+    console.log(`📊 Найдено ${rows.length} записей для импорта`);
+    
+    let imported = 0;
+    let errors = [];
+    let skipped = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        // Получаем название (поддерживаем разные варианты)
+        let title = row['title'] || row['Название'] || row['название'] || '';
+        title = String(title).trim();
+        
+        if (!title) {
+          errors.push(`Строка ${i + 2}: отсутствует название`);
+          continue;
+        }
+
+        // Проверяем, существует ли уже такая манга
+        const existing = await prisma.manga.findFirst({
+          where: { title: title }
+        });
+
+        if (existing) {
+          console.log(`⚠️ Манга "${title}" уже существует, пропускаем`);
+          skipped++;
+          continue;
+        }
+
+        // Парсим альтернативные названия
+        let alternativeTitles = [];
+        const altTitlesRaw = row['alternative_titles'] || row['Альтернативные названия'] || '';
+        if (altTitlesRaw) {
+          const altStr = String(altTitlesRaw);
+          alternativeTitles = altStr.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
+        }
+
+        // Парсим описание
+        let description = row['description'] || row['Описание'] || '';
+        description = String(description).trim();
+
+        // Парсим обложку
+        let coverImage = row['cover_image'] || row['Обложка'] || '';
+        coverImage = String(coverImage).trim();
+        if (!coverImage || coverImage === '') {
+          coverImage = '/uploads/covers/default.png';
+        }
+
+        // Парсим автора
+        let author = row['author'] || row['Автор'] || '';
+        author = String(author).trim();
+
+        // Парсим художника
+        let artist = row['artist'] || row['Художник'] || '';
+        artist = String(artist).trim();
+
+        // Парсим статус
+        let status = row['status'] || row['Статус'] || 'ongoing';
+        status = String(status).toLowerCase().trim();
+        if (!['ongoing', 'completed', 'hiatus', 'cancelled'].includes(status)) {
+          status = 'ongoing';
+        }
+
+        // Парсим год
+        let year = null;
+        const yearRaw = row['year'] || row['Год'];
+        if (yearRaw && !isNaN(parseInt(yearRaw))) {
+          year = parseInt(yearRaw);
+        }
+
+        // Парсим жанры
+        let genres = [];
+        const genresRaw = row['genres'] || row['Жанры'] || '';
+        if (genresRaw) {
+          const genresStr = String(genresRaw);
+          genres = genresStr.split(',').map(g => g.trim().replace(/[\[\]"]/g, '')).filter(g => g);
+        }
+
+        // Парсим рейтинг
+        let rating = 0;
+        const ratingRaw = row['rating'] || row['Рейтинг'];
+        if (ratingRaw && !isNaN(parseFloat(ratingRaw))) {
+          rating = parseFloat(ratingRaw);
+        }
+
+        // Парсим просмотры
+        let views = 0;
+        const viewsRaw = row['views'] || row['Просмотры'];
+        if (viewsRaw && !isNaN(parseInt(viewsRaw))) {
+          views = parseInt(viewsRaw);
+        }
+
+        // Парсим количество глав
+        let chaptersCount = 0;
+        const chaptersCountRaw = row['chapters_count'] || row['Количество глав'];
+        if (chaptersCountRaw && !isNaN(parseInt(chaptersCountRaw))) {
+          chaptersCount = parseInt(chaptersCountRaw);
+        }
+
+        const mangaData = {
+          title: title,
+          alternativeTitles: alternativeTitles,
+          description: description,
+          coverImage: coverImage,
+          author: author,
+          artist: artist,
+          status: status,
+          year: year,
+          genres: genres,
+          rating: rating,
+          views: BigInt(views),
+          chaptersCount: chaptersCount,
+        };
+
+        await prisma.manga.create({ data: mangaData });
+        imported++;
+        console.log(`✅ Импортирована: ${title}`);
+
+      } catch (rowError) {
+        console.error(`❌ Ошибка в строке ${i + 2}:`, rowError);
+        errors.push(`Строка ${i + 2}: ${rowError.message}`);
+      }
+    }
+
+    // Удаляем временный файл
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    console.log(`🎉 Импорт завершен: добавлено ${imported}, пропущено ${skipped}, ошибок: ${errors.length}`);
+    
+    let message = `Импортировано ${imported} записей`;
+    if (skipped > 0) message += `, пропущено (уже существуют): ${skipped}`;
+    if (errors.length > 0) message += `, ошибок: ${errors.length}`;
+    
+    res.json({ 
+      message: message,
+      imported: imported,
+      skipped: skipped,
+      errors: errors.length > 0 ? errors : undefined
+    });
+    
+  } catch (error) {
+    console.error('❌ Ошибка импорта из Excel:', error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ message: 'Ошибка импорта из Excel: ' + error.message });
+  }
+});
+
+// ========== ЗАГРУЗКА ОБЛОЖКИ ==========
+app.post('/api/admin/upload-cover', authenticateToken, requireAdmin, upload.single('cover'), async (req, res) => {
+  try {
+    console.log('📤 Загрузка обложки...');
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const fileName = `cover-${Date.now()}${ext}`;
+    const filePath = path.join(COVERS_DIR, fileName);
+    
+    fs.copyFileSync(req.file.path, filePath);
+    fs.unlinkSync(req.file.path);
+    
+    const coverUrl = `/uploads/covers/${fileName}`;
+    
+    console.log(`✅ Обложка загружена: ${coverUrl}`);
+    
+    res.json({ 
+      message: 'Обложка загружена', 
+      coverUrl: coverUrl 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка загрузки обложки:', error);
+    res.status(500).json({ message: 'Ошибка загрузки обложки: ' + error.message });
+  }
+});
+
+// ========== ИМПОРТ ИЗ EXCEL ==========
+app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
+  try {
+    console.log('📥 Начало импорта из Excel...');
+    
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+
+    // Читаем Excel файл
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    
+    console.log(`📊 Найдено ${rows.length} записей для импорта`);
+    
+    let imported = 0;
+    let errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        // Парсим данные из строки
+        const title = row['title'] || row['Название'] || '';
+        if (!title) {
+          errors.push(`Строка ${i + 2}: отсутствует название`);
+          continue;
+        }
+
+        // Парсим альтернативные названия
+        let alternativeTitles = [];
+        const altTitlesRaw = row['alternative_titles'] || row['Альтернативные названия'] || '';
+        if (altTitlesRaw) {
+          if (typeof altTitlesRaw === 'string') {
+            alternativeTitles = altTitlesRaw.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
+          } else if (Array.isArray(altTitlesRaw)) {
+            alternativeTitles = altTitlesRaw;
+          }
+        }
+
+        // Парсим жанры
+        let genres = [];
+        const genresRaw = row['genres'] || row['Жанры'] || '';
+        if (genresRaw) {
+          if (typeof genresRaw === 'string') {
+            genres = genresRaw.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
+          } else if (Array.isArray(genresRaw)) {
+            genres = genresRaw;
+          }
+        }
+
+        // Парсим год
+        let year = null;
+        const yearRaw = row['year'] || row['Год'];
+        if (yearRaw && !isNaN(parseInt(yearRaw))) {
+          year = parseInt(yearRaw);
+        }
+
+        // Парсим рейтинг
+        let rating = 0;
+        const ratingRaw = row['rating'] || row['Рейтинг'];
+        if (ratingRaw && !isNaN(parseFloat(ratingRaw))) {
+          rating = parseFloat(ratingRaw);
+        }
+
+        // Парсим просмотры
+        let views = 0;
+        const viewsRaw = row['views'] || row['Просмотры'];
+        if (viewsRaw && !isNaN(parseInt(viewsRaw))) {
+          views = parseInt(viewsRaw);
+        }
+
+        // Парсим количество глав
+        let chaptersCount = 0;
+        const chaptersCountRaw = row['chapters_count'] || row['Количество глав'];
+        if (chaptersCountRaw && !isNaN(parseInt(chaptersCountRaw))) {
+          chaptersCount = parseInt(chaptersCountRaw);
+        }
+
+        const mangaData = {
+          title: title,
+          alternativeTitles: alternativeTitles,
+          description: row['description'] || row['Описание'] || '',
+          coverImage: row['cover_image'] || row['Обложка'] || '/uploads/covers/default.png',
+          author: row['author'] || row['Автор'] || '',
+          artist: row['artist'] || row['Художник'] || '',
+          status: row['status'] || row['Статус'] || 'ongoing',
+          year: year,
+          genres: genres,
+          rating: rating,
+          views: BigInt(views),
+          chaptersCount: chaptersCount,
+        };
+
+        // Проверяем, существует ли уже манга с таким названием
+        const existing = await prisma.manga.findFirst({
+          where: { title: mangaData.title }
+        });
+
+        if (existing) {
+          console.log(`⚠️ Манга "${title}" уже существует, пропускаем`);
+          errors.push(`Строка ${i + 2}: манга "${title}" уже существует`);
+          continue;
+        }
+
+        await prisma.manga.create({ data: mangaData });
+        imported++;
+        console.log(`✅ Импортирована: ${title}`);
+
+      } catch (rowError) {
+        console.error(`❌ Ошибка в строке ${i + 2}:`, rowError);
+        errors.push(`Строка ${i + 2}: ${rowError.message}`);
+      }
+    }
+
+    // Удаляем временный файл
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    console.log(`🎉 Импорт завершен: добавлено ${imported}, ошибок: ${errors.length}`);
+    
+    res.json({ 
+      message: `Импортировано ${imported} записей${errors.length > 0 ? `, ошибок: ${errors.length}` : ''}`,
+      imported: imported,
+      errors: errors.length > 0 ? errors : undefined
+    });
+    
+  } catch (error) {
+    console.error('❌ Ошибка импорта из Excel:', error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ message: 'Ошибка импорта из Excel: ' + error.message });
+  }
 });
 
 // ========== Прогресс и статусы ==========
@@ -568,7 +1169,7 @@ app.patch('/api/notifications/:id/read', authenticateToken, async (req, res) => 
   res.json({ message: 'Прочитано' });
 });
 
-// ========== Форум (публичное API) ==========
+// ========== Форум ==========
 app.get('/api/forum_categories', async (req, res) => {
   const categories = await prisma.forumCategory.findMany({ orderBy: { order: 'asc' } });
   res.json(categories);
@@ -638,7 +1239,6 @@ app.post('/api/forum_posts', authenticateToken, requireVerified, async (req, res
   }
 });
 
-// Последние посты форума
 app.get('/api/forum/posts/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -663,7 +1263,6 @@ app.get('/api/forum/posts/recent', async (req, res) => {
   }
 });
 
-// Популярные темы
 app.get('/api/forum/topics/popular', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -776,23 +1375,19 @@ app.post('/api/feedback', async (req, res) => {
   try {
     const { name, email, message } = req.body;
 
-    // Сохраняем в БД
     const feedback = await prisma.feedback.create({
       data: { name, email, message, ip: req.ip }
     });
 
-    // Пытаемся отправить письмо
     try {
       await sendAdminFeedbackNotification(feedback);
     } catch (emailError) {
-      // Письмо не ушло – возвращаем ошибку клиенту
       console.error('Ошибка отправки уведомления:', emailError);
       return res.status(500).json({
         message: 'Ваше сообщение сохранено, но уведомление администратору отправить не удалось. Попробуйте позже.'
       });
     }
 
-    // Всё прошло успешно
     res.status(201).json({
       message: 'Сообщение отправлено! Администратор получит уведомление на почту.',
       feedback
@@ -803,9 +1398,6 @@ app.post('/api/feedback', async (req, res) => {
   }
 });
 
-// server/server.js (фрагмент)
-
-// Ответ администратора на сообщение (отправка email пользователю)
 app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { message } = req.body;
@@ -819,7 +1411,6 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
       return res.status(404).json({ message: 'Сообщение не найдено' });
     }
 
-    // Отправляем письмо пользователю
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_FROM,
@@ -835,7 +1426,6 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
       });
     }
 
-    // Помечаем сообщение как отвеченное
     await prisma.feedback.update({
       where: { id: feedbackId },
       data: { status: 'replied' },
@@ -845,92 +1435,6 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
   } catch (error) {
     console.error('Ошибка в маршруте reply:', error);
     res.status(500).json({ message: 'Ошибка сервера при отправке ответа.' });
-  }
-});
-
-app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.single('pages'), async (req, res) => {
-  try {
-    const { mangaId, chapterNumber, title } = req.body;
-    if (!mangaId || !chapterNumber) return res.status(400).json({ message: 'mangaId и chapterNumber обязательны' });
-    if (!req.file) return res.status(400).json({ message: 'Файл не загружен' });
-    const manga = await prisma.manga.findUnique({ where: { id: BigInt(mangaId) } });
-    if (!manga) return res.status(404).json({ message: 'Манга не найдена' });
-    const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
-    if (!fs.existsSync(chapterDir)) fs.mkdirSync(chapterDir, { recursive: true });
-    const zip = new AdmZip(req.file.path);
-    const entries = zip.getEntries();
-    let pageNumber = 1;
-    const pagesData = [];
-    entries.forEach(entry => {
-      if (!entry.isDirectory) {
-        const ext = path.extname(entry.entryName).toLowerCase();
-        if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
-          const fileName = `${pageNumber}${ext}`;
-          fs.writeFileSync(path.join(chapterDir, fileName), entry.getData());
-          pagesData.push({
-            pageNumber: pageNumber,
-            imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNumber}/${fileName}`,
-          });
-          pageNumber++;
-        }
-      }
-    });
-    fs.unlinkSync(req.file.path);
-    const chapter = await prisma.chapter.create({
-      data: {
-        id: parseFloat(`${Date.now()}.${Math.floor(Math.random()*1000)}`),
-        mangaId: BigInt(mangaId),
-        chapterNumber: parseInt(chapterNumber),
-        title: title || `Глава ${chapterNumber}`,
-        pagesCount: pagesData.length,
-      },
-    });
-    for (const page of pagesData) {
-      await prisma.page.create({
-        data: {
-          chapterId: chapter.id,
-          pageNumber: page.pageNumber,
-          imageUrl: page.imageUrl,
-        },
-      });
-    }
-    const chaptersCount = await prisma.chapter.count({ where: { mangaId: BigInt(mangaId) } });
-    await prisma.manga.update({ where: { id: BigInt(mangaId) }, data: { chaptersCount } });
-    res.json({ message: 'Глава загружена', chapter });
-  } catch (error) {
-    console.error('Ошибка загрузки главы:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'Файл не загружен' });
-    const workbook = XLSX.readFile(req.file.path);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-    let imported = 0;
-    for (const row of rows) {
-      await prisma.manga.create({
-        data: {
-          title: row['Название'] || '',
-          alternativeTitles: row['Альтернативные названия'] ? String(row['Альтернативные названия']).split(',').map(s => s.trim()) : [],
-          description: row['Описание'] || '',
-          author: row['Автор'] || '',
-          artist: row['Художник'] || '',
-          status: row['Статус'] || 'ongoing',
-          year: row['Год'] ? parseInt(row['Год']) : null,
-          genres: row['Жанры'] ? String(row['Жанры']).split(',').map(g => g.trim()) : [],
-          coverImage: row['Обложка'] || '',
-        },
-      });
-      imported++;
-    }
-    fs.unlinkSync(req.file.path);
-    res.json({ message: `Импортировано ${imported} записей` });
-  } catch (err) {
-    console.error('Ошибка импорта:', err);
-    res.status(500).json({ message: 'Ошибка импорта из Excel: ' + err.message });
   }
 });
 
@@ -944,19 +1448,15 @@ app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) =>
   res.json({ users: usersCount, manga: mangaCount, totalViews: viewsTotal._sum.views || 0, popular });
 });
 
-// Синхронизация (заглушка)
 app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
   res.json({ message: 'Синхронизация выполнена (функционал в разработке)' });
 });
 
-// Дефолтная обложка
 app.get('/api/cover/default', (req, res) => {
   res.setHeader('Content-Type', 'image/png');
   res.send(emptyPNG);
 });
 
-// Отдача обложек по ID манги
-// Список глав конкретной манги
 app.get('/api/manga/:id/chapters', async (req, res) => {
   const mangaId = BigInt(req.params.id);
   const chapters = await prisma.chapter.findMany({
@@ -966,7 +1466,418 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
   });
   res.json(chapters);
 });
+
+// Раздача статики
+app.use(express.static(path.join(__dirname, '../dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// ========== СИНХРОНИЗАЦИЯ СТРАНИЦ ==========
+app.post('/api/admin/sync-pages', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔄 Начинаю синхронизацию страниц...');
+    
+    const chapters = await prisma.chapter.findMany();
+    let updatedChapters = 0;
+    let totalPagesCreated = 0;
+    
+    for (const chapter of chapters) {
+      const mangaId = chapter.mangaId.toString();
+      const chapterNum = chapter.chapterNumber;
+      const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+      
+      if (fs.existsSync(chapterDir)) {
+        const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+        
+        if (files.length > 0) {
+          files.sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+            const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+            return numA - numB;
+          });
+          
+          await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
+          
+          const pagesData = [];
+          for (let i = 0; i < files.length; i++) {
+            pagesData.push({
+              chapterId: chapter.id,
+              pageNumber: i + 1,
+              imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${files[i]}`,
+            });
+          }
+          
+          await prisma.page.createMany({ data: pagesData });
+          
+          if (chapter.pagesCount !== files.length) {
+            await prisma.chapter.update({
+              where: { id: chapter.id },
+              data: { pagesCount: files.length }
+            });
+          }
+          
+          updatedChapters++;
+          totalPagesCreated += files.length;
+          console.log(`✅ Глава ${chapterNum} манги ${mangaId}: ${files.length} страниц`);
+        }
+      }
+    }
+    
+    res.json({ 
+      message: `Синхронизация завершена: обновлено ${updatedChapters} глав, создано ${totalPagesCreated} страниц`,
+      updatedChapters,
+      totalPagesCreated
+    });
+  } catch (error) {
+    console.error('❌ Ошибка синхронизации страниц:', error);
+    res.status(500).json({ message: 'Ошибка синхронизации: ' + error.message });
+  }
+});
+
+// ========== СИНХРОНИЗАЦИЯ СТРАНИЦ (РАБОЧАЯ) ==========
+app.post('/api/admin/sync-pages', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔄 НАЧАЛО СИНХРОНИЗАЦИИ СТРАНИЦ...');
+    
+    // Получаем все главы из БД
+    const chapters = await prisma.chapter.findMany();
+    console.log(`📊 Найдено глав в БД: ${chapters.length}`);
+    
+    let updatedChapters = 0;
+    let totalPagesCreated = 0;
+    const errors = [];
+    
+    for (const chapter of chapters) {
+      const mangaId = chapter.mangaId.toString();
+      const chapterNum = chapter.chapterNumber;
+      const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+      
+      console.log(`📁 Проверяем папку: ${chapterDir}`);
+      
+      if (fs.existsSync(chapterDir)) {
+        const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+        console.log(`📄 Найдено файлов в папке: ${files.length}`);
+        
+        if (files.length > 0) {
+          // Сортируем файлы по номеру страницы
+          files.sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+            const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+            return numA - numB;
+          });
+          
+          // Удаляем старые записи страниц
+          const deleted = await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
+          console.log(`🗑️ Удалено старых записей страниц: ${deleted.count}`);
+          
+          // Создаем новые записи
+          const pagesData = [];
+          for (let i = 0; i < files.length; i++) {
+            pagesData.push({
+              chapterId: chapter.id,
+              pageNumber: i + 1,
+              imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${files[i]}`,
+            });
+          }
+          
+          const created = await prisma.page.createMany({ data: pagesData });
+          console.log(`✅ Создано новых записей страниц: ${created.count}`);
+          
+          // Обновляем количество страниц в главе
+          if (chapter.pagesCount !== files.length) {
+            await prisma.chapter.update({
+              where: { id: chapter.id },
+              data: { pagesCount: files.length }
+            });
+            console.log(`📊 Обновлено количество страниц в главе ${chapterNum}: ${files.length}`);
+          }
+          
+          updatedChapters++;
+          totalPagesCreated += files.length;
+        } else {
+          console.log(`⚠️ В папке нет изображений для главы ${chapterNum}`);
+        }
+      } else {
+        console.log(`❌ Папка не существует: ${chapterDir}`);
+        errors.push(`Глава ${chapterNum} манги ${mangaId}: папка не найдена`);
+      }
+    }
+    
+    console.log(`\n🎉 СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА!`);
+    console.log(`📊 Обновлено глав: ${updatedChapters}`);
+    console.log(`📄 Создано страниц: ${totalPagesCreated}`);
+    
+    res.json({ 
+      success: true,
+      message: `Синхронизация завершена: обновлено ${updatedChapters} глав, создано ${totalPagesCreated} страниц`,
+      updatedChapters,
+      totalPagesCreated,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('❌ Ошибка синхронизации страниц:', error);
+    res.status(500).json({ success: false, message: 'Ошибка синхронизации: ' + error.message });
+  }
+});
+
+// ========== ПОЛНАЯ СИНХРОНИЗАЦИЯ (РАБОЧАЯ) ==========
+app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔄 НАЧАЛО ПОЛНОЙ СИНХРОНИЗАЦИИ...');
+    
+    // 1. Синхронизируем страницы
+    const chapters = await prisma.chapter.findMany();
+    let updatedChapters = 0;
+    let totalPagesCreated = 0;
+    
+    for (const chapter of chapters) {
+      const mangaId = chapter.mangaId.toString();
+      const chapterNum = chapter.chapterNumber;
+      const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+      
+      if (fs.existsSync(chapterDir)) {
+        const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+        
+        if (files.length > 0) {
+          files.sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+            const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+            return numA - numB;
+          });
+          
+          await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
+          
+          const pagesData = [];
+          for (let i = 0; i < files.length; i++) {
+            pagesData.push({
+              chapterId: chapter.id,
+              pageNumber: i + 1,
+              imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${files[i]}`,
+            });
+          }
+          
+          await prisma.page.createMany({ data: pagesData });
+          
+          if (chapter.pagesCount !== files.length) {
+            await prisma.chapter.update({
+              where: { id: chapter.id },
+              data: { pagesCount: files.length }
+            });
+          }
+          
+          updatedChapters++;
+          totalPagesCreated += files.length;
+        }
+      }
+    }
+    
+    // 2. Обновляем количество глав в манге
+    const mangaListAll = await prisma.manga.findMany();
+    for (const manga of mangaListAll) {
+      const chaptersCount = await prisma.chapter.count({ where: { mangaId: manga.id } });
+      if (manga.chaptersCount !== chaptersCount) {
+        await prisma.manga.update({
+          where: { id: manga.id },
+          data: { chaptersCount }
+        });
+      }
+    }
+    
+    console.log(`\n🎉 ПОЛНАЯ СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА!`);
+    console.log(`📊 Обновлено глав: ${updatedChapters}`);
+    console.log(`📄 Создано страниц: ${totalPagesCreated}`);
+    
+    res.json({ 
+      success: true,
+      message: `Полная синхронизация завершена! Обновлено: ${updatedChapters} глав, ${totalPagesCreated} страниц`,
+      updatedChapters,
+      totalPagesCreated
+    });
+  } catch (error) {
+    console.error('❌ Ошибка полной синхронизации:', error);
+    res.status(500).json({ success: false, message: 'Ошибка синхронизации: ' + error.message });
+  }
+});
+
+// ========== ПРЯМАЯ ЗАГРУЗКА СТРАНИЦ ПО ФАЙЛАМ ==========
+app.get('/api/chapters/:id/real-pages', async (req, res) => {
+  try {
+    const chapterId = parseFloat(req.params.id);
+    
+    // Получаем главу из БД
+    const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+    if (!chapter) {
+      return res.status(404).json({ error: 'Глава не найдена' });
+    }
+    
+    const mangaId = chapter.mangaId.toString();
+    const chapterNum = chapter.chapterNumber;
+    const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+    
+    // ЧИТАЕМ ФАЙЛЫ ПРЯМО С ДИСКА
+    if (!fs.existsSync(chapterDir)) {
+      return res.status(404).json({ error: 'Папка с изображениями не найдена', path: chapterDir });
+    }
+    
+    const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+    
+    if (files.length === 0) {
+      return res.status(404).json({ error: 'Нет изображений в папке', path: chapterDir });
+    }
+    
+    // Сортируем по номеру страницы
+    files.sort((a, b) => {
+      const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+      const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+      return numA - numB;
+    });
+    
+    // ФОРМИРУЕМ СТРАНИЦЫ ПРЯМО ИЗ ФАЙЛОВ (БЕЗ БД)
+    const pages = files.map((file, index) => ({
+      page_number: index + 1,
+      image_url: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${file}`
+    }));
+    
+    res.json({
+      chapter_id: chapter.id,
+      manga_id: chapter.mangaId,
+      chapter_number: chapter.chapterNumber,
+      title: chapter.title,
+      pages: pages,
+      total_pages: pages.length,
+      from_disk: true  // маркер, что страницы из файлов
+    });
+    
+  } catch (error) {
+    console.error('Ошибка:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== ПОЛУЧИТЬ РЕАЛЬНОЕ КОЛИЧЕСТВО СТРАНИЦ ИЗ ПАПКИ ==========
+app.get('/api/admin/chapter-pages-count/:chapterId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const chapterId = parseFloat(req.params.chapterId);
+    const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+    
+    if (!chapter) {
+      return res.status(404).json({ error: 'Глава не найдена' });
+    }
+    
+    const mangaId = chapter.mangaId.toString();
+    const chapterNum = chapter.chapterNumber;
+    const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+    
+    let pagesCount = 0;
+    
+    if (fs.existsSync(chapterDir)) {
+      const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+      pagesCount = files.length;
+    }
+    
+    res.json({
+      chapterId: chapter.id,
+      pagesCount: pagesCount,
+      path: chapterDir
+    });
+  } catch (error) {
+    console.error('Ошибка:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== ОБНОВИТЬ КОЛИЧЕСТВО СТРАНИЦ В БД ==========
+app.post('/api/admin/sync-chapter-pages/:chapterId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const chapterId = parseFloat(req.params.chapterId);
+    const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+    
+    if (!chapter) {
+      return res.status(404).json({ error: 'Глава не найдена' });
+    }
+    
+    const mangaId = chapter.mangaId.toString();
+    const chapterNum = chapter.chapterNumber;
+    const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+    
+    let pagesCount = 0;
+    
+    if (fs.existsSync(chapterDir)) {
+      const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+      pagesCount = files.length;
+      
+      await prisma.chapter.update({
+        where: { id: chapter.id },
+        data: { pagesCount: pagesCount }
+      });
+    }
+    
+    res.json({
+      success: true,
+      chapterId: chapter.id,
+      pagesCount: pagesCount
+    });
+  } catch (error) {
+    console.error('Ошибка:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== СМЕНА ПАРОЛЯ (ИСПРАВЛЕНО) ==========
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = BigInt(req.user.id);
+    
+    console.log('🔄 Смена пароля для пользователя:', userId);
+    
+    // Проверяем обязательные поля
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Все поля обязательны' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Новый пароль должен содержать минимум 6 символов' });
+    }
+    
+    // Получаем пользователя из БД через Prisma
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+    
+    // Проверяем текущий пароль
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Неверный текущий пароль' });
+    }
+    
+    // Хешируем новый пароль
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Обновляем пароль в БД через Prisma
+    await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        password: hashedPassword,
+        updatedAt: new Date()
+      }
+    });
+    
+    console.log('✅ Пароль успешно изменен для пользователя:', userId);
+    res.json({ message: 'Пароль успешно изменен' });
+    
+  } catch (error) {
+    console.error('❌ Ошибка смены пароля:', error);
+    res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
+  }
+});
+
 // Запуск
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
