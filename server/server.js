@@ -1467,13 +1467,22 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
   res.json(chapters);
 });
 
+<<<<<<< HEAD
 // Раздача статики
 app.use(express.static(path.join(__dirname, '../dist')));
 
+=======
+
+// Раздача статики из папки dist (путь подкорректируйте под своё расположение)
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Для Vue Router в режиме history: все не-API запросы отправляем на index.html
+>>>>>>> 6c86952448153670efab205150ff8e685eed79ce
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
+<<<<<<< HEAD
 // ========== СИНХРОНИЗАЦИЯ СТРАНИЦ ==========
 app.post('/api/admin/sync-pages', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -1880,4 +1889,9 @@ app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
 // Запуск
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
+=======
+// Запуск
+app.listen(3000, '0.0.0.0', () => {
+  console.log('Server running on port 3000');
+>>>>>>> 6c86952448153670efab205150ff8e685eed79ce
 });

@@ -203,7 +203,10 @@ const getCurrentWebtoonPage = computed(() => {
 });
 
 const getFullImageUrl = (url) => {
+<<<<<<< HEAD
   if (!url) return '';
+=======
+>>>>>>> 6c86952448153670efab205150ff8e685eed79ce
   return getCoverUrl(url);
 };
 
