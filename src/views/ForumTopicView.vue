@@ -1,67 +1,60 @@
 <template>
   <div class="topic-page">
     <div class="topic-container">
+      <!-- Кнопка назад -->
       <button @click="goBack" class="back-btn">← Назад к форуму</button>
 
-      <div v-if="!topic" class="error-state">
-        <h2>❌ Тема не найдена</h2>
-        <p>Возможно, она была удалена или ссылка неверна</p>
-        <button @click="goBack" class="back-btn">Вернуться на форум</button>
+      <!-- Информация о теме -->
+      <div class="topic-header">
+        <h1 class="topic-title">{{ topic?.title }}</h1>
+        <div class="topic-meta">
+          <span>Автор: {{ topic?.author?.username || 'Пользователь' }}</span>
+          <span>📅 {{ formatDate(topic?.created_at) }}</span>
+          <span>👁 {{ topic?.views || 0 }} просмотров</span>
+        </div>
       </div>
 
-      <template v-else>
-        <div class="topic-header">
-          <h1 class="topic-title">{{ topic.title }}</h1>
-          <div class="topic-meta">
-            <span>Автор: {{ topic.author?.username || 'Пользователь' }}</span>
-            <span>📅 {{ formatDate(topic.created_at) }}</span>
-            <span>👁 {{ topic.views || 0 }} просмотров</span>
-          </div>
-        </div>
-
-        <div class="posts-list">
-          <div v-if="posts.length === 0" class="empty-posts">
-            <p>😔 В этой теме пока нет сообщений. Будьте первым!</p>
-          </div>
-          <div v-for="post in posts" :key="post.id" class="post-card">
-            <div class="post-header">
-              <div class="post-author">
-                <span class="author-avatar">👤</span>
-                <span class="author-name">{{ post.author?.username || 'Пользователь' }}</span>
-                <span class="post-date">{{ formatDate(post.created_at) }}</span>
-              </div>
-              <div class="post-likes">
-                <button 
-                  @click="toggleLike(post.id)" 
-                  class="like-btn"
-                  :class="{ liked: post.is_liked }"
-                >
-                  ❤️ {{ post.likes || 0 }}
-                </button>
-              </div>
+      <!-- Список постов -->
+      <div class="posts-list">
+        <div v-for="post in posts" :key="post.id" class="post-card">
+          <div class="post-header">
+            <div class="post-author">
+              <span class="author-avatar">👤</span>
+              <span class="author-name">{{ post.author?.username || 'Пользователь' }}</span>
+              <span class="post-date">{{ formatDate(post.created_at) }}</span>
             </div>
-            <div class="post-content">
-              <p>{{ post.content }}</p>
+            <div class="post-likes">
+              <button 
+                @click="toggleLike(post.id)" 
+                class="like-btn"
+                :class="{ liked: post.is_liked }"
+              >
+                ❤️ {{ post.likes || 0 }}
+              </button>
             </div>
           </div>
+          <div class="post-content">
+            <p>{{ post.content }}</p>
+          </div>
         </div>
+      </div>
 
-        <div class="reply-section" v-if="authStore.isLoggedIn">
-          <h3>Ответить в тему</h3>
-          <textarea 
-            v-model="replyContent" 
-            class="reply-input" 
-            rows="4" 
-            placeholder="Введите ваш ответ..."
-          ></textarea>
-          <button @click="addReply" :disabled="!replyContent.trim() || sendingReply" class="reply-btn">
-            {{ sendingReply ? 'Отправка...' : 'Отправить ответ' }}
-          </button>
-        </div>
-        <div v-else class="login-prompt">
-          <p>🔐 <router-link to="/login">Войдите</router-link>, чтобы оставить ответ</p>
-        </div>
-      </template>
+      <!-- Форма добавления ответа -->
+      <div class="reply-section" v-if="authStore.isLoggedIn">
+        <h3>Ответить в тему</h3>
+        <textarea 
+          v-model="replyContent" 
+          class="reply-input" 
+          rows="4" 
+          placeholder="Введите ваш ответ..."
+        ></textarea>
+        <button @click="addReply" :disabled="!replyContent.trim() || sendingReply" class="reply-btn">
+          {{ sendingReply ? 'Отправка...' : 'Отправить ответ' }}
+        </button>
+      </div>
+      <div v-else class="login-prompt">
+        <p>🔐 <router-link to="/login">Войдите</router-link>, чтобы оставить ответ</p>
+      </div>
     </div>
   </div>
 </template>
@@ -70,6 +63,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { forumAPI } from '@/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -81,13 +75,18 @@ const replyContent = ref('');
 const sendingReply = ref(false);
 
 const loadData = () => {
+  // Пробуем загрузить из localStorage (если форум использует localStorage)
   const topics = JSON.parse(localStorage.getItem('forum_topics') || '[]');
   const topicId = parseInt(route.params.id);
   topic.value = topics.find(t => t.id === topicId);
   
-  if (!topic.value) return;
+  if (!topic.value) {
+    alert('Тема не найдена');
+    router.push('/forum');
+    return;
+  }
   
-  // Увеличиваем просмотры (один раз за сессию)
+  // Увеличиваем просмотры
   const viewedKey = `topic_viewed_${topicId}`;
   if (!sessionStorage.getItem(viewedKey)) {
     topic.value.views = (topic.value.views || 0) + 1;
@@ -100,6 +99,7 @@ const loadData = () => {
     }
   }
   
+  // Загружаем посты
   const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}');
   posts.value = postsStore[topicId] || [];
 };
@@ -130,6 +130,7 @@ const goBack = () => {
   router.push('/forum');
 };
 
+// Функция лайка
 const toggleLike = (postId) => {
   if (!authStore.isLoggedIn) {
     alert('Войдите в аккаунт, чтобы ставить лайки');
@@ -147,11 +148,13 @@ const toggleLike = (postId) => {
     post.is_liked = true;
   }
   
+  // Сохраняем обновленные посты
   const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}');
   postsStore[topic.value.id] = posts.value;
   localStorage.setItem('forum_posts_store', JSON.stringify(postsStore));
 };
 
+// Функция добавления ответа
 const addReply = async () => {
   if (!replyContent.value.trim()) return;
   if (!authStore.isLoggedIn) {
@@ -162,7 +165,7 @@ const addReply = async () => {
   sendingReply.value = true;
   
   try {
-    const currentUser = authStore.user?.username || authStore.user?.email || 'Пользователь';
+    const currentUser = authStore.user?.username || 'Пользователь';
     
     const newPost = {
       id: Date.now(),
@@ -233,6 +236,7 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 0.9rem;
   margin-bottom: 20px;
+  transition: all 0.2s;
 }
 
 .back-btn:hover {
@@ -283,6 +287,11 @@ onUnmounted(() => {
   border-radius: 12px;
   border: 1px solid rgba(128, 131, 42, 0.2);
   overflow: hidden;
+  transition: all 0.2s;
+}
+
+.post-card:hover {
+  border-color: rgba(128, 131, 42, 0.4);
 }
 
 .post-header {
@@ -303,6 +312,10 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
+.author-avatar {
+  font-size: 1.2rem;
+}
+
 .author-name {
   font-weight: 600;
   color: var(--color-primary, #07660c);
@@ -320,7 +333,15 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 5px 10px;
   border-radius: 20px;
+  transition: all 0.2s;
   color: #aaa;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.like-btn:hover {
+  transform: scale(1.05);
 }
 
 .like-btn.liked {
@@ -336,6 +357,7 @@ onUnmounted(() => {
   line-height: 1.6;
   color: var(--color-text, #ffffff);
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .reply-section {
@@ -378,6 +400,7 @@ onUnmounted(() => {
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .reply-btn:disabled {

@@ -50,9 +50,9 @@ export const formatTimeAgo = (dateString) => {
  */
 export const getCategoryIcon = (name) => {
   const icons = {
-    'Обсуждение манги': '📚',
-    'Новости и анонсы': '📰',
-    default: '📁'
+    'Обсуждение манги': '',
+    'Новости и анонсы': '',
+    default: ''
   };
   return icons[name] || icons.default;
 };

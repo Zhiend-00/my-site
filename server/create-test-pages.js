@@ -11,14 +11,14 @@ const emptyPNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADU
 // Читаем db.json
 const dbPath = path.join(__dirname, 'db.json');
 if (!fs.existsSync(dbPath)) {
-  console.error('❌ db.json не найден!');
+  console.error(' db.json не найден!');
   process.exit(1);
 }
 const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 const chapters = db.chapters || [];
 
 if (chapters.length === 0) {
-  console.log('⚠️ В db.json нет глав. Сначала синхронизируйте данные через POST /api/sync-all');
+  console.log('️ В db.json нет глав. Сначала синхронизируйте данные через POST /api/sync-all');
   process.exit(0);
 }
 
@@ -30,7 +30,7 @@ for (const chapter of chapters) {
   
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
-    console.log(`📁 Создана папка: ${dir}`);
+    console.log(` Создана папка: ${dir}`);
   }
   
   let created = 0;
@@ -42,10 +42,10 @@ for (const chapter of chapters) {
     }
   }
   if (created > 0) {
-    console.log(`✅ Создано ${created} страниц для главы ${chapterNum} манги ${mangaId}`);
+    console.log(` Создано ${created} страниц для главы ${chapterNum} манги ${mangaId}`);
   } else {
-    console.log(`✔️ Глава ${chapterNum} манги ${mangaId} уже имеет страницы`);
+    console.log(`️ Глава ${chapterNum} манги ${mangaId} уже имеет страницы`);
   }
 }
 
-console.log('\n🎉 Все тестовые страницы созданы! Теперь перезапустите сервер и откройте любую главу.');
+console.log('\n Все тестовые страницы созданы! Теперь перезапустите сервер и откройте любую главу.');

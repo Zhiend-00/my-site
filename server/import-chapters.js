@@ -46,10 +46,10 @@ async function importChapters() {
           create: { chapterId: chapter.id, pageNumber, imageUrl },
         });
       }
-      console.log(`✅ Глава ${chapterNumber} манги ${mangaId} добавлена (${pageFiles.length} стр.)`);
+      console.log(` Глава ${chapterNumber} манги ${mangaId} добавлена (${pageFiles.length} стр.)`);
     }
   }
-  console.log('🎉 Импорт глав завершён!');
+  console.log(' Импорт глав завершён!');
 }
 
 importChapters().catch(e => console.error(e)).finally(() => prisma.$disconnect());

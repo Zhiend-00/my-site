@@ -21,7 +21,7 @@
                 minlength="6"
               />
               <button type="button" class="toggle-btn" @click="showPassword = !showPassword">
-                {{ showPassword ? '🙈' : '👁️' }}
+                {{ showPassword ? '' : '️' }}
               </button>
             </div>
           </div>
@@ -37,7 +37,7 @@
                 required
               />
               <button type="button" class="toggle-btn" @click="showConfirm = !showConfirm">
-                {{ showConfirm ? '🙈' : '👁️' }}
+                {{ showConfirm ? '' : '️' }}
               </button>
             </div>
             <p v-if="mismatch" class="error-hint">Пароли не совпадают</p>
@@ -50,13 +50,13 @@
         </form>
 
         <div v-if="successMsg" class="success-message">
-          <span class="success-icon">✅</span>
+          <span class="success-icon"></span>
           <p>{{ successMsg }}</p>
           <router-link to="/login" class="login-link">Перейти ко входу</router-link>
         </div>
 
         <div v-if="errorMsg" class="error-message">
-          ⚠️ {{ errorMsg }}
+          ️ {{ errorMsg }}
         </div>
 
         <div class="card-footer">

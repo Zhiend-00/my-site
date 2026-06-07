@@ -94,7 +94,7 @@ CREATE TABLE "forum_categories" (
     "slug" TEXT NOT NULL,
     "topics_count" INTEGER NOT NULL DEFAULT 0,
     "posts_count" INTEGER NOT NULL DEFAULT 0,
-    "icon" TEXT DEFAULT '📁',
+    "icon" TEXT DEFAULT '',
     "order" INTEGER NOT NULL DEFAULT 1,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,

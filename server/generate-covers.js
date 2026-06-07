@@ -39,6 +39,6 @@ for (let id = 1; id <= 6; id++) {
   // Сохраняем
   const buffer = canvas.toBuffer('image/png');
   fs.writeFileSync(path.join(coversDir, `cover-${id}.png`), buffer);
-  console.log(`✅ Обложка cover-${id}.png создана`);
+  console.log(` Обложка cover-${id}.png создана`);
 }
 console.log('Готово.');

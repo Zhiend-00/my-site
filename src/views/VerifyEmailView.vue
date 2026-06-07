@@ -10,7 +10,7 @@
         </div>
 
         <div v-else-if="success" class="status-message success">
-          <span class="icon">✅</span>
+          <span class="icon"></span>
           <h2>Email подтверждён!</h2>
           <p>Теперь вы можете войти в свой аккаунт.</p>
           <router-link to="/login" class="btn-primary">Перейти к входу</router-link>

@@ -44,6 +44,6 @@ for (const ch of chapters) {
 
     fs.writeFileSync(filePath, canvas.toBuffer('image/png'));
   }
-  console.log(`✅ Глава ${ch.chapter} манги ${ch.mangaId} (${ch.pages} стр.)`);
+  console.log(` Глава ${ch.chapter} манги ${ch.mangaId} (${ch.pages} стр.)`);
 }
 console.log('Готово.');

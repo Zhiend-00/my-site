@@ -24,7 +24,7 @@
             <div class="password-input-wrapper">
               <input :type="showPassword ? 'text' : 'password'" id="password" v-model="form.password" placeholder="Минимум 6 символов" required />
               <button type="button" @click="showPassword = !showPassword" class="password-toggle">
-                {{ showPassword ? '🙈' : '👁️' }}
+                {{ showPassword ? '' : '️' }}
               </button>
             </div>
             <div v-if="errors.password" class="error-message">{{ errors.password }}</div>
@@ -35,7 +35,7 @@
             <div class="password-input-wrapper">
               <input :type="showConfirmPassword ? 'text' : 'password'" id="confirmPassword" v-model="form.confirmPassword" placeholder="Повторите пароль" required />
               <button type="button" @click="showConfirmPassword = !showConfirmPassword" class="password-toggle">
-                {{ showConfirmPassword ? '🙈' : '👁️' }}
+                {{ showConfirmPassword ? '' : '️' }}
               </button>
             </div>
             <div v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</div>
@@ -52,9 +52,9 @@
             {{ submitting ? 'Регистрация...' : 'Зарегистрироваться' }}
           </button>
 
-          <div v-if="authStore.error" class="form-error">❌ {{ authStore.error }}</div>
+          <div v-if="authStore.error" class="form-error"> {{ authStore.error }}</div>
           <div v-if="successMsg" class="form-success">
-            ✅ {{ successMsg }}
+             {{ successMsg }}
             <div class="email-note">Проверьте почту и перейдите по ссылке для подтверждения email.</div>
           </div>
         </form>
@@ -62,10 +62,10 @@
         <div class="register-info">
           <h3>После регистрации вы сможете:</h3>
           <ul class="benefits-list">
-            <li>📚 Сохранять прогресс чтения</li>
-            <li>🔖 Добавлять в закладки</li>
-            <li>💬 Участвовать в обсуждениях (после подтверждения email)</li>
-            <li>🔔 Получать уведомления</li>
+            <li> Сохранять прогресс чтения</li>
+            <li> Добавлять в закладки</li>
+            <li> Участвовать в обсуждениях (после подтверждения email)</li>
+            <li> Получать уведомления</li>
           </ul>
         </div>
       </div>

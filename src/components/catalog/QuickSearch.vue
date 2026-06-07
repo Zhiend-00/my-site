@@ -44,7 +44,7 @@
       <!-- Посмотреть все результаты -->
       <div class="view-all" @click="viewAllResults">
         <span>Посмотреть все результаты по запросу "{{ query }}"</span>
-        <span class="view-all-icon">🔍</span>
+        <span class="view-all-icon"></span>
       </div>
     </div>
     

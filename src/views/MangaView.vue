@@ -1,328 +1,468 @@
 <template>
-  <div class="manga-page" v-if="manga">
+  <div class="manga-page">
     <div class="container">
-      <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-banner">
-        <span>⚠️ Ваш Email не подтверждён. Оценка, комментарии и рецензии недоступны.</span>
-        <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
-      </div>
-
-      <div class="manga-header">
-        <div class="manga-cover">
-          <img :src="getCoverUrl(manga.coverImage || manga.cover_image)" :alt="manga.title" />
-        </div>
-        <div class="manga-info">
-          <h1>{{ manga.title }}</h1>
-          <p class="description">{{ manga.description }}</p>
-          <div class="meta">
-            <span>Автор: {{ manga.author }}</span>
-            <span>Статус: {{ getStatusText(manga.status) }}</span>
-            <span>Год: {{ manga.year }}</span>
+      <!-- Карточка манги на сером фоне -->
+      <div class="manga-card-section">
+        <div class="manga-header">
+          <div class="manga-cover">
+            <img :src="getCoverUrl(manga.coverImage || manga.cover_image)" :alt="manga.title" />
           </div>
-          <div class="rating-section">
-            <span class="rating-label">Рейтинг:</span>
-            <div class="rating-stars">
-              <span v-for="n in 10" :key="n" class="star"
-                :class="{ active: n <= userRating, filled: n <= manga.rating }"
-                @click="rateManga(n)">★</span>
-              <span class="rating-value">{{ manga.rating ? manga.rating.toFixed(1) : '0.0' }}</span>
-            </div>
-          </div>
-          <div class="genres">
-            <span v-for="genre in manga.genres" :key="genre" class="genre-tag">{{ genre }}</span>
-          </div>
-          <div class="action-buttons">
-            <div class="dropdown" ref="dropdownRef">
-              <button class="btn-bookmark" @click.stop="toggleDropdown">Добавить в закладки</button>
-              <div class="dropdown-menu" v-if="dropdownOpen">
-                <button @click="setStatus('reading')">Читаю</button>
-                <button @click="setStatus('completed')">Прочитано</button>
-                <button @click="setStatus('dropped')">Брошено</button>
-                <button @click="setStatus('planned')">Запланировано</button>
+          <div class="manga-info">
+            <h1 class="manga-title">{{ manga.title }}</h1>
+            <p class="manga-description">{{ manga.description }}</p>
+            <div class="manga-meta">
+              <div class="meta-item">
+                <span class="meta-label">Автор:</span>
+                <span class="meta-value">{{ manga.author || 'Неизвестен' }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Статус:</span>
+                <span class="meta-value">{{ getStatusText(manga.status) }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Год:</span>
+                <span class="meta-value">{{ manga.year || '—' }}</span>
               </div>
             </div>
-            <button class="btn-read" @click="startReading">
-              {{ hasProgress ? 'Продолжить читать' : 'Читать с начала' }}
-            </button>
-            <button class="btn-reviews" @click="toggleReviewsBlock">Рецензии</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Блок рецензий (появляется по клику) -->
-      <div v-if="showReviews" class="reviews-section">
-        <div class="reviews-header">
-          <h2>Рецензии</h2>
-          <button 
-            v-if="authStore.isLoggedIn && authStore.user?.emailVerified" 
-            class="add-review-btn" 
-            @click="openReviewModal"
-          >
-            + Добавить рецензию
-          </button>
-        </div>
-        <div v-if="reviewsLoading" class="loading">Загрузка рецензий...</div>
-        <div v-else-if="reviewsList.length === 0" class="no-reviews">Пока нет рецензий. Будьте первым!</div>
-        <div v-else class="reviews-list">
-          <div v-for="review in reviewsList" :key="review.id" class="review-card">
-            <div class="review-header">
-              <span class="review-author">{{ review.authorName }}</span>
-              <span class="review-date">{{ formatDate(review.createdAt) }}</span>
+            
+            <!-- Рейтинг манги -->
+            <div class="manga-rating">
+              <div class="rating-stars">
+                <span 
+                  v-for="i in 10" 
+                  :key="i" 
+                  class="star" 
+                  :class="{ active: i <= (userRating || Math.round(manga.rating || 0)) }"
+                  @click="setRating(i)"
+                  @mouseenter="hoverRating = i"
+                  @mouseleave="hoverRating = null"
+                >
+                  ★
+                </span>
+              </div>
+              <span class="rating-value">{{ manga.rating?.toFixed(1) || 'Нет оценок' }}</span>
+              <span v-if="userRating" class="user-rating-badge">Ваша оценка: {{ userRating }}/10</span>
             </div>
-            <div class="review-text">{{ review.text }}</div>
+            
+            <div class="manga-genres">
+              <span v-for="genre in manga.genres" :key="genre" class="genre-tag">{{ genre }}</span>
+            </div>
+            
+            <div class="manga-actions">
+              <div class="bookmark-wrapper" ref="bookmarkBtnRef">
+                <button @click="toggleStatusDropdown" class="action-btn" :class="{ active: currentStatus }">
+                  {{ currentStatus ? getStatusLabel(currentStatus) : 'Добавить в закладки' }}
+                </button>
+                
+                <!-- Выпадающий список статуса -->
+                <div v-if="showStatusDropdown" class="status-dropdown">
+                  <div class="status-dropdown-list">
+                    <button @click="setStatus('reading')" class="status-dropdown-item" :class="{ active: currentStatus === 'reading' }">
+                      <span class="status-icon">📖</span>
+                      <span>Читаю</span>
+                    </button>
+                    <button @click="setStatus('completed')" class="status-dropdown-item" :class="{ active: currentStatus === 'completed' }">
+                      <span class="status-icon">✅</span>
+                      <span>Прочитано</span>
+                    </button>
+                    <button @click="setStatus('planned')" class="status-dropdown-item" :class="{ active: currentStatus === 'planned' }">
+                      <span class="status-icon">📌</span>
+                      <span>Запланировано</span>
+                    </button>
+                    <button @click="setStatus('dropped')" class="status-dropdown-item" :class="{ active: currentStatus === 'dropped' }">
+                      <span class="status-icon">❌</span>
+                      <span>Брошено</span>
+                    </button>
+                  </div>
+                  <div v-if="currentStatus" class="status-dropdown-footer">
+                    <span class="current-status-text">Текущий: {{ getStatusLabel(currentStatus) }}</span>
+                    <button @click="removeFromBookmarks" class="remove-bookmark-link">Удалить</button>
+                  </div>
+                </div>
+              </div>
+              
+              <button v-if="firstChapterId" @click="goToFirstChapter" class="action-btn primary">
+                Читать с начала
+              </button>
+              <button @click="toggleView" class="action-btn" :class="{ active: showReviews }">
+                {{ showReviews ? 'Показать главы' : 'Рецензии' }}
+                <span v-if="!showReviews && approvedReviews.length > 0" class="reviews-count">({{ approvedReviews.length }})</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Главы -->
-      <div class="chapters-section">
-        <div class="chapters-header">
+      <!-- Список глав -->
+      <div v-if="!showReviews" class="chapters-section">
+        <div class="section-header">
           <h2>Список глав</h2>
-          <button class="btn-invert" @click="invertOrder">
-            {{ orderAsc ? 'С начала' : 'С конца' }}
-          </button>
+          <div class="chapter-filters">
+            <button @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'" class="sort-btn">
+              {{ sortOrder === 'asc' ? '↑ По возрастанию' : '↓ По убыванию' }}
+            </button>
+          </div>
         </div>
         <div class="chapters-list">
-          <div v-for="chapter in orderedChapters" :key="chapter.id" class="chapter-item" @click="goToChapter(chapter.id)">
-            <span>Глава {{ chapter.chapterNumber || chapter.chapter_number }}</span>
-            <span class="chapter-title">{{ chapter.title }}</span>
-            <span class="chapter-date">{{ formatDate(chapter.createdAt || chapter.created_at) }}</span>
+          <div v-for="chapter in sortedChapters" :key="chapter.id" class="chapter-item">
+            <router-link :to="`/chapter/${chapter.id}`" class="chapter-link">
+              <span class="chapter-number">Глава {{ chapter.chapterNumber || chapter.chapter_number }}</span>
+              <span class="chapter-title">{{ chapter.title || `Глава ${chapter.chapterNumber || chapter.chapter_number}` }}</span>
+              <span class="chapter-date">{{ formatDate(chapter.createdAt || chapter.created_at) }}</span>
+            </router-link>
+          </div>
+          <div v-if="chapters.length === 0" class="empty-chapters">
+            У этой манги пока нет глав
           </div>
         </div>
       </div>
 
-      <!-- Комментарии -->
-      <div class="comments-section">
-        <h2>Комментарии</h2>
-        <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="verification-warning">
-          <p>⚠️ Чтобы оставить комментарий, необходимо подтвердить Email.</p>
-          <router-link to="/verify-email" class="verify-link">Подтвердить Email</router-link>
+      <!-- Рецензии -->
+      <div v-else class="reviews-dropdown">
+        <div class="reviews-header">
+          <h3>Рецензии</h3>
+          <button @click="openReviewModal" class="btn-add-review">+ Добавить рецензию</button>
         </div>
-        <div v-else-if="authStore.isLoggedIn" class="comment-form">
-          <textarea v-model="newComment" placeholder="Оставьте комментарий..." rows="3"></textarea>
-          <button @click="submitComment" :disabled="!newComment.trim() || commentSending">Отправить</button>
+        
+        <div v-if="approvedReviews.length === 0" class="empty-reviews">
+          Пока нет рецензий. Будьте первым!
         </div>
-        <div v-else class="login-prompt">
-          <router-link to="/login">Войдите</router-link>, чтобы оставить комментарий
-        </div>
-        <div class="comments-list">
-          <div v-for="comment in comments" :key="comment.id" class="comment-item">
-            <div class="comment-header">
-              <span class="comment-author">{{ comment.authorName }}</span>
-              <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        
+        <div v-else class="reviews-list">
+          <div v-for="review in approvedReviews" :key="review.id" class="review-card">
+            <div class="review-header">
+              <div class="review-author">
+                <span class="author-name">{{ review.userName }}</span>
+                <span class="review-date">{{ formatDate(review.createdAt) }}</span>
+              </div>
+              <div class="review-rating-display">
+                <span v-for="i in 10" :key="i" class="star-small" :class="{ active: i <= review.rating }">★</span>
+                <span class="rating-number">{{ review.rating }}/10</span>
+              </div>
             </div>
-            <div class="comment-content">{{ comment.content }}</div>
+            <div class="review-content-full">
+              <p>{{ review.content }}</p>
+            </div>
           </div>
-          <div v-if="comments.length === 0" class="no-comments">Пока нет комментариев</div>
         </div>
       </div>
     </div>
 
     <!-- Модальное окно добавления рецензии -->
-    <div v-if="showReviewModal" class="modal-overlay" @click.self="closeReviewModal">
+    <div v-if="showReviewModal" class="modal-overlay" @click.self="showReviewModal = false">
       <div class="modal-content">
-        <h3>Добавить рецензию</h3>
+        <div class="modal-header">
+          <h3>Написать рецензию</h3>
+          <button @click="showReviewModal = false" class="close-modal">&times;</button>
+        </div>
         <form @submit.prevent="submitReview">
           <div class="form-group">
-            <label>Ваша рецензия (минимум 10 символов)</label>
-            <textarea v-model="reviewText" rows="6" placeholder="Поделитесь мнением о манге..." required></textarea>
+            <label>Оценка (1-10)</label>
+            <input type="number" v-model.number="reviewForm.rating" min="1" max="10" required />
+          </div>
+          <div class="form-group">
+            <label>Текст рецензии</label>
+            <textarea v-model="reviewForm.content" rows="6" required placeholder="Поделитесь своим мнением..."></textarea>
           </div>
           <div class="modal-actions">
-            <button type="submit" :disabled="reviewSending" class="save-btn">
-              {{ reviewSending ? 'Отправка...' : 'Отправить на модерацию' }}
+            <button type="button" @click="showReviewModal = false" class="btn-cancel">Отмена</button>
+            <button type="submit" :disabled="submittingReview" class="btn-submit">
+              {{ submittingReview ? 'Отправка...' : 'Отправить на модерацию' }}
             </button>
-            <button type="button" class="cancel-btn" @click="closeReviewModal">Отмена</button>
           </div>
-          <p v-if="reviewSubmitSuccess" class="success-msg">Рецензия отправлена на модерацию!</p>
         </form>
       </div>
     </div>
   </div>
-  <div v-else-if="loading" class="loading">Загрузка...</div>
-  <div v-else-if="error" class="error">{{ error }}</div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMangaStore } from '@/stores/manga'
+import { mangaAPI, chaptersAPI, userMangaStatusAPI } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { getCoverUrl } from '@/utils/imageHelper'
-import { userMangaStatusAPI, progressAPI, mangaAPI } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
-const mangaStore = useMangaStore()
 const authStore = useAuthStore()
 
-const manga = ref(null)
-const loading = ref(true)
-const error = ref(null)
-const orderAsc = ref(true)
-const dropdownOpen = ref(false)
-const hasProgress = ref(false)
-const dropdownRef = ref(null)
-
-const userRating = ref(0)
-const comments = ref([])
-const newComment = ref('')
-const commentSending = ref(false)
-
-// Рецензии
-const showReviews = ref(false)
-const reviewsList = ref([])
-const reviewsLoading = ref(false)
+const manga = ref({})
+const chapters = ref([])
+const currentStatus = ref(null)
+const sortOrder = ref('asc')
 const showReviewModal = ref(false)
-const reviewText = ref('')
-const reviewSending = ref(false)
-const reviewSubmitSuccess = ref(false)
+const showReviews = ref(false)
+const showStatusDropdown = ref(false)
+const submittingReview = ref(false)
+const reviewForm = ref({ rating: 5, content: '' })
+const approvedReviews = ref([])
+const userRating = ref(null)
+const hoverRating = ref(null)
+const bookmarkBtnRef = ref(null)
 
-const orderedChapters = computed(() => {
-  if (!manga.value?.chapters) return []
-  const chapters = [...manga.value.chapters]
-  return orderAsc.value
-    ? chapters.sort((a, b) => (a.chapterNumber || a.chapter_number) - (b.chapterNumber || b.chapter_number))
-    : chapters.sort((a, b) => (b.chapterNumber || b.chapter_number) - (a.chapterNumber || a.chapter_number))
+const firstChapterId = computed(() => {
+  if (chapters.value.length === 0) return null
+  const sorted = [...chapters.value].sort((a, b) => {
+    const numA = a.chapterNumber || a.chapter_number
+    const numB = b.chapterNumber || b.chapter_number
+    return numA - numB
+  })
+  return sorted[0]?.id
+})
+
+const sortedChapters = computed(() => {
+  const sorted = [...chapters.value]
+  return sorted.sort((a, b) => {
+    const numA = a.chapterNumber || a.chapter_number
+    const numB = b.chapterNumber || b.chapter_number
+    return sortOrder.value === 'asc' ? numA - numB : numB - numA
+  })
 })
 
 const getStatusText = (status) => {
-  const map = { ongoing: 'Онгоинг', completed: 'Завершена', hiatus: 'Перерыв' }
-  return map[status] || status
-}
-const formatDate = (date) => new Date(date).toLocaleDateString('ru-RU')
-
-const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value }
-const closeDropdown = () => { dropdownOpen.value = false }
-
-const setStatus = async (status) => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  try {
-    await userMangaStatusAPI.set(authStore.user.id, manga.value.id, status)
-    closeDropdown()
-  } catch (err) { console.error(err) }
-}
-
-const startReading = async () => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  let chapterId = null
-  if (hasProgress.value) {
-    try {
-      const progress = await progressAPI.get(manga.value.id)
-      if (progress && progress.chapter_id) chapterId = progress.chapter_id
-    } catch (err) {}
+  const statusMap = {
+    ongoing: 'Онгоинг',
+    completed: 'Завершена',
+    hiatus: 'Перерыв',
+    cancelled: 'Отменена'
   }
-  if (!chapterId && manga.value.chapters?.length) chapterId = manga.value.chapters[0].id
-  if (chapterId) router.push(`/chapter/${chapterId}`)
+  return statusMap[status] || status
 }
 
-const goToChapter = (chapterId) => router.push(`/chapter/${chapterId}`)
-
-const rateManga = async (rating) => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!authStore.user.emailVerified) { alert('Подтвердите email для оценки манги'); return; }
-  userRating.value = rating
-  try {
-    await mangaAPI.rate(manga.value.id, rating)
-    const updated = await mangaAPI.get(manga.value.id)
-    manga.value.rating = updated.rating
-  } catch (e) { alert('Ошибка при оценке') }
+const getStatusLabel = (status) => {
+  const labels = {
+    reading: 'Читаю',
+    completed: 'Прочитано',
+    planned: 'Запланировано',
+    dropped: 'Брошено'
+  }
+  return labels[status] || status
 }
 
-// Комментарии
-const loadComments = async () => {
-  try {
-    const data = await mangaAPI.getComments(manga.value.id)
-    comments.value = data || []
-  } catch (e) {}
-}
-const submitComment = async () => {
-  if (!newComment.value.trim()) return
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!authStore.user.emailVerified) { alert('Подтвердите email для комментирования'); return; }
-  commentSending.value = true
-  try {
-    const comment = await mangaAPI.addComment(manga.value.id, newComment.value)
-    comments.value.unshift(comment)
-    newComment.value = ''
-  } catch (e) { alert('Ошибка отправки') }
-  finally { commentSending.value = false }
+const formatDate = (date) => {
+  if (!date) return ''
+  return new Date(date).toLocaleDateString('ru-RU')
 }
 
-// Рецензии
-const loadReviews = async () => {
-  if (!manga.value) return
-  reviewsLoading.value = true
-  try {
-    const data = await reviewsAPI.getByManga(manga.value.id)
-    reviewsList.value = data
-  } catch (e) { console.error(e) }
-  finally { reviewsLoading.value = false }
-}
-const toggleReviewsBlock = () => {
-  showReviews.value = !showReviews.value
-  if (showReviews.value && reviewsList.value.length === 0) {
-    loadReviews()
+// Закрыть dropdown при клике вне
+const handleClickOutside = (event) => {
+  if (showStatusDropdown.value && bookmarkBtnRef.value && !bookmarkBtnRef.value.contains(event.target)) {
+    showStatusDropdown.value = false
   }
 }
-const openReviewModal = () => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!authStore.user.emailVerified) { alert('Подтвердите email для добавления рецензии'); return; }
-  showReviewModal.value = true
-  reviewText.value = ''
-  reviewSubmitSuccess.value = false
-}
-const closeReviewModal = () => {
-  showReviewModal.value = false
-  reviewText.value = ''
-  reviewSubmitSuccess.value = false
-}
-const submitReview = async () => {
-  if (!reviewText.value.trim() || reviewText.value.trim().length < 10) {
-    alert('Рецензия должна содержать минимум 10 символов')
+
+const toggleStatusDropdown = () => {
+  if (!authStore.isLoggedIn) {
+    alert('Войдите в аккаунт, чтобы добавлять в закладки')
     return
   }
-  reviewSending.value = true
+  showStatusDropdown.value = !showStatusDropdown.value
+}
+
+// Функция для установки рейтинга
+const setRating = async (rating) => {
+  if (!authStore.isLoggedIn) {
+    alert('Войдите в аккаунт, чтобы оценить мангу')
+    return
+  }
   try {
-    await reviewsAPI.create(manga.value.id, reviewText.value)
-    reviewSubmitSuccess.value = true
-    setTimeout(() => {
-      closeReviewModal()
-    }, 2000)
-  } catch (e) {
-    alert('Ошибка отправки: ' + (e.message || 'Попробуйте позже'))
-  } finally {
-    reviewSending.value = false
+    const ratings = JSON.parse(localStorage.getItem('user_ratings') || '{}')
+    ratings[manga.value.id] = rating
+    localStorage.setItem('user_ratings', JSON.stringify(ratings))
+    userRating.value = rating
+    
+    try {
+      await mangaAPI.rate(manga.value.id, rating)
+      const updatedManga = await mangaAPI.get(manga.value.id)
+      manga.value.rating = updatedManga.rating
+    } catch (serverError) {
+      console.warn('Ошибка сервера, но оценка сохранена локально')
+    }
+  } catch (error) {
+    console.error('Ошибка сохранения оценки:', error)
   }
 }
 
-const loadData = async () => {
-  loading.value = true; error.value = null
+const loadUserRating = async () => {
+  if (!authStore.isLoggedIn) return
   try {
-    const id = route.params.id
-    const data = await mangaStore.fetchMangaById(id)
-    if (!data) throw new Error('Манга не найдена')
-    manga.value = data
-    if (authStore.isLoggedIn) {
-      try {
-        const progress = await progressAPI.get(data.id)
-        hasProgress.value = !!progress
-      } catch (err) {}
+    const ratings = JSON.parse(localStorage.getItem('user_ratings') || '{}')
+    if (ratings[manga.value.id]) {
+      userRating.value = ratings[manga.value.id]
     }
-    await loadComments()
-  } catch (err) { error.value = err.message }
-  finally { loading.value = false }
+  } catch (error) {
+    console.error('Ошибка загрузки оценки:', error)
+  }
 }
 
-const invertOrder = () => { orderAsc.value = !orderAsc.value }
+// Функции для работы со статусом манги
+const setStatus = async (status) => {
+  if (!authStore.isLoggedIn) return
+  
+  try {
+    const userStatuses = JSON.parse(localStorage.getItem('user_manga_status') || '{}')
+    userStatuses[manga.value.id] = {
+      status: status,
+      mangaId: manga.value.id,
+      mangaTitle: manga.value.title,
+      cover: manga.value.coverImage || manga.value.cover_image,
+      updatedAt: new Date().toISOString()
+    }
+    localStorage.setItem('user_manga_status', JSON.stringify(userStatuses))
+    currentStatus.value = status
+    
+    try {
+      await userMangaStatusAPI.set(authStore.user.id, manga.value.id, status)
+    } catch (serverError) {
+      console.warn('Ошибка сервера, но статус сохранен локально')
+    }
+    
+    showStatusDropdown.value = false
+  } catch (error) {
+    console.error('Ошибка сохранения статуса:', error)
+  }
+}
 
-const handleClickOutside = (event) => {
-  if (dropdownOpen.value && dropdownRef.value && !dropdownRef.value.contains(event.target)) {
-    closeDropdown()
+const removeFromBookmarks = async () => {
+  if (!authStore.isLoggedIn) return
+  
+  try {
+    const userStatuses = JSON.parse(localStorage.getItem('user_manga_status') || '{}')
+    delete userStatuses[manga.value.id]
+    localStorage.setItem('user_manga_status', JSON.stringify(userStatuses))
+    currentStatus.value = null
+    
+    try {
+      await userMangaStatusAPI.set(authStore.user.id, manga.value.id, null)
+    } catch (serverError) {
+      console.warn('Ошибка сервера, но удаление сохранено локально')
+    }
+    
+    showStatusDropdown.value = false
+  } catch (error) {
+    console.error('Ошибка удаления:', error)
+  }
+}
+
+const loadUserStatus = async () => {
+  if (!authStore.isLoggedIn) return
+  
+  try {
+    const userStatuses = JSON.parse(localStorage.getItem('user_manga_status') || '{}')
+    if (userStatuses[manga.value.id]) {
+      currentStatus.value = userStatuses[manga.value.id].status
+    }
+    
+    try {
+      const statuses = await userMangaStatusAPI.get(authStore.user.id)
+      if (statuses && Array.isArray(statuses)) {
+        const userStatus = statuses.find(s => s.mangaId == manga.value.id || s.manga_id == manga.value.id)
+        if (userStatus) {
+          currentStatus.value = userStatus.status
+          userStatuses[manga.value.id] = {
+            status: userStatus.status,
+            mangaId: manga.value.id,
+            mangaTitle: manga.value.title,
+            cover: manga.value.coverImage || manga.value.cover_image,
+            updatedAt: new Date().toISOString()
+          }
+          localStorage.setItem('user_manga_status', JSON.stringify(userStatuses))
+        }
+      }
+    } catch (serverError) {
+      console.log('Используем локальный статус')
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки статуса:', error)
+  }
+}
+
+const goToFirstChapter = () => {
+  if (firstChapterId.value) {
+    router.push(`/chapter/${firstChapterId.value}`)
+  }
+}
+
+const toggleView = () => {
+  showReviews.value = !showReviews.value
+}
+
+const openReviewModal = () => {
+  if (!authStore.isLoggedIn) {
+    alert('Войдите в аккаунт, чтобы оставить рецензию')
+    return
+  }
+  showReviewModal.value = true
+}
+
+const loadApprovedReviews = () => {
+  const approved = JSON.parse(localStorage.getItem('approved_reviews') || '[]')
+  approvedReviews.value = approved.filter(r => r.mangaId == manga.value.id)
+}
+
+const submitReview = async () => {
+  if (!reviewForm.value.content.trim()) {
+    alert('Введите текст рецензии')
+    return
+  }
+  submittingReview.value = true
+  try {
+    const currentUser = authStore.user?.username || 'Пользователь'
+    const newReview = {
+      id: Date.now(),
+      mangaId: manga.value.id,
+      mangaTitle: manga.value.title,
+      userName: currentUser,
+      rating: reviewForm.value.rating,
+      content: reviewForm.value.content,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    }
+    
+    const existingReviews = JSON.parse(localStorage.getItem('pending_reviews') || '[]')
+    existingReviews.unshift(newReview)
+    localStorage.setItem('pending_reviews', JSON.stringify(existingReviews))
+    
+    window.dispatchEvent(new CustomEvent('reviewsUpdated'))
+    
+    showReviewModal.value = false
+    reviewForm.value = { rating: 5, content: '' }
+  } catch (err) {
+    console.error('Ошибка:', err)
+    alert('Ошибка при отправке рецензии')
+  } finally {
+    submittingReview.value = false
+  }
+}
+
+const loadManga = async () => {
+  try {
+    const id = route.params.id
+    manga.value = await mangaAPI.get(id)
+    document.title = `${manga.value.title} | Forgotten Team`
+    loadApprovedReviews()
+    loadUserRating()
+    loadUserStatus()
+  } catch (e) {
+    console.error('Ошибка загрузки манги:', e)
+  }
+}
+
+const loadChapters = async () => {
+  try {
+    const id = route.params.id
+    const data = await mangaAPI.getChapters(id)
+    chapters.value = data || []
+  } catch (e) {
+    console.error('Ошибка загрузки глав:', e)
   }
 }
 
 onMounted(() => {
+  loadManga()
+  loadChapters()
   document.addEventListener('click', handleClickOutside)
-  loadData()
 })
 
 onUnmounted(() => {
@@ -331,384 +471,702 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ===== ОСНОВНЫЕ СТИЛИ СТРАНИЦЫ (оставляем как было) ===== */
 .manga-page {
-  padding: 40px 0;
-  background: #121212;
-  color: #fff;
+  min-height: calc(100vh - var(--header-height, 60px) - var(--footer-height, 60px));
+  padding: 30px 0;
+  background: var(--color-background, #0a0a0a);
 }
+
 .container {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 0 20px;
 }
+
+/* Карточка манги */
+.manga-card-section {
+  background: #202020;
+  border-radius: 16px;
+  padding: 25px;
+  margin-bottom: 30px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
+}
+
 .manga-header {
   display: flex;
-  gap: 40px;
-  margin-bottom: 50px;
+  gap: 30px;
   flex-wrap: wrap;
 }
+
 .manga-cover {
-  flex: 0 0 250px;
+  flex-shrink: 0;
+  width: 220px;
+  height: 310px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
+
 .manga-cover img {
   width: 100%;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  height: 100%;
+  object-fit: cover;
 }
+
 .manga-info {
   flex: 1;
 }
-h1 {
-  font-size: 2rem;
+
+.manga-title {
+  font-size: 1.8rem;
+  font-weight: 700;
   color: #07660c;
-  margin-bottom: 15px;
+  margin: 0 0 15px 0;
 }
-.description {
-  color: #ccc;
+
+.manga-description {
+  font-size: 0.9rem;
   line-height: 1.6;
+  color: #ccc;
   margin-bottom: 20px;
 }
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 15px;
-  color: #80832a;
+
+.manga-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
 }
-.rating-section {
-  margin: 15px 0;
+
+.meta-item {
+  display: flex;
+  gap: 8px;
+}
+
+.meta-label {
+  color: #9ea344;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.meta-value {
+  color: #ddd;
+  font-size: 0.85rem;
+}
+
+/* Рейтинг */
+.manga-rating {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
+
 .rating-stars {
   display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.star {
-  font-size: 1.5rem;
-  color: #555;
+  gap: 2px;
   cursor: pointer;
 }
-.star.filled {
-  color: #ffd700;
+
+.star {
+  font-size: 1.5rem;
+  color: #444;
+  transition: all 0.2s;
+  cursor: pointer;
 }
+
+.star:hover {
+  transform: scale(1.1);
+}
+
 .star.active {
-  color: #ffaa00;
+  color: #ffcc00;
 }
-.genres {
+
+.rating-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #9ea344;
+}
+
+.user-rating-badge {
+  font-size: 0.8rem;
+  color: #07660c;
+  background: rgba(7, 102, 12, 0.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.manga-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 25px;
-}
-.genre-tag {
-  background: #2b2b2b;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-}
-.action-buttons {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-.btn-bookmark, .btn-read, .btn-reviews {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn-bookmark {
-  background: #80832a;
-  color: white;
-}
-.btn-read {
-  background: #07660c;
-  color: white;
-}
-.btn-reviews {
-  background: #2b2b2b;
-  border: 1px solid #80832a;
-  color: white;
-}
-.btn-reviews:hover {
-  background: #80832a;
-}
-.dropdown {
-  position: relative;
-}
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #2b2b2b;
-  border-radius: 8px;
-  overflow: hidden;
-  z-index: 10;
-  margin-top: 5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-.dropdown-menu button {
-  display: block;
-  width: 100%;
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  color: white;
-  text-align: left;
-  cursor: pointer;
-}
-.dropdown-menu button:hover {
-  background: #07660c;
+  margin-bottom: 20px;
 }
 
-/* ===== РЕЦЕНЗИИ ===== */
-.reviews-section {
-  margin-top: 40px;
-  background: #202020;
-  border-radius: 12px;
-  padding: 20px;
+.genre-tag {
+  background: rgba(7, 102, 12, 0.2);
+  border: 1px solid #9ea344;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #9ea344;
 }
+
+/* Кнопки действий */
+.manga-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  position: relative;
+}
+
+.bookmark-wrapper {
+  position: relative;
+}
+
+.action-btn {
+  padding: 10px 24px;
+  background: rgba(128, 131, 42, 0.2);
+  border: 1px solid #9ea344;
+  border-radius: 8px;
+  color: #9ea344;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.action-btn:hover {
+  background: rgba(128, 131, 42, 0.4);
+}
+
+.action-btn.primary {
+  background: #07660c;
+  border-color: #07660c;
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background: #0a8a10;
+}
+
+.action-btn.active {
+  background: #07660c;
+  border-color: #07660c;
+  color: white;
+}
+
+.reviews-count {
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 20px;
+}
+
+/* Выпадающий список статуса - под кнопкой */
+.status-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 200px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 131, 42, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  animation: dropdownFadeIn 0.2s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 0;
+}
+
+.status-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-size: 0.85rem;
+  color: #ddd;
+  width: 100%;
+}
+
+.status-dropdown-item:hover {
+  background: rgba(128, 131, 42, 0.15);
+}
+
+.status-dropdown-item.active {
+  background: rgba(7, 102, 12, 0.2);
+  color: #07660c;
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+.status-dropdown-footer {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(128, 131, 42, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.current-status-text {
+  color: #aaa;
+}
+
+.remove-bookmark-link {
+  background: none;
+  border: none;
+  color: #ff4444;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+
+.remove-bookmark-link:hover {
+  text-decoration: underline;
+}
+
+/* Список глав */
+.chapters-section {
+  background: #1a1a1a;
+  border-radius: 12px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(7, 102, 12, 0.1);
+  border-bottom: 1px solid rgba(128, 131, 42, 0.2);
+}
+
+.section-header h2 {
+  font-size: 1.2rem;
+  color: #9ea344;
+  margin: 0;
+}
+
+.sort-btn {
+  background: rgba(128, 131, 42, 0.2);
+  border: 1px solid #9ea344;
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: #9ea344;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-btn:hover {
+  background: rgba(128, 131, 42, 0.4);
+}
+
+.chapters-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapter-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chapter-item:last-child {
+  border-bottom: none;
+}
+
+.chapter-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.chapter-link:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chapter-number {
+  font-weight: 600;
+  color: #07660c;
+  min-width: 100px;
+}
+
+.chapter-title {
+  flex: 1;
+  color: white;
+  margin-left: 20px;
+}
+
+.chapter-date {
+  font-size: 0.7rem;
+  color: #aaa;
+}
+
+.empty-chapters {
+  text-align: center;
+  padding: 40px;
+  color: #aaa;
+}
+
+/* Рецензии */
+.reviews-dropdown {
+  background: #1a1a1a;
+  border-radius: 12px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
+  overflow: hidden;
+  margin-bottom: 30px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .reviews-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: rgba(7, 102, 12, 0.1);
+  border-bottom: 1px solid rgba(128, 131, 42, 0.2);
 }
-.reviews-header h2 {
-  color: #07660c;
+
+.reviews-header h3 {
+  font-size: 1.2rem;
+  color: #9ea344;
   margin: 0;
 }
-.add-review-btn {
-  background: #80832a;
+
+.btn-add-review {
+  background: #07660c;
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 30px;
+  padding: 8px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
 }
+
+.btn-add-review:hover {
+  background: #0a8a10;
+  transform: translateY(-1px);
+}
+
 .reviews-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  padding: 20px;
 }
+
 .review-card {
-  background: #2b2b2b;
+  background: #2a2a2a;
   border-radius: 10px;
-  padding: 15px;
+  padding: 16px;
+  border: 1px solid rgba(128, 131, 42, 0.2);
+  transition: all 0.2s;
 }
+
+.review-card:hover {
+  border-color: rgba(128, 131, 42, 0.5);
+}
+
 .review-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  color: #80832a;
-  font-size: 0.9rem;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .review-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.author-name {
   font-weight: 600;
   color: #07660c;
-}
-.review-text {
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-.no-reviews {
-  text-align: center;
-  padding: 30px;
-  color: #80832a;
-}
-
-/* ===== ГЛАВЫ ===== */
-.chapters-section {
-  margin-top: 40px;
-}
-.chapters-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-.btn-invert {
-  background: #2b2b2b;
-  border: 1px solid #80832a;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.chapters-list {
-  background: #202020;
-  border-radius: 12px;
-  overflow: hidden;
-}
-.chapter-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #2b2b2b;
-  cursor: pointer;
-}
-.chapter-item:hover {
-  background: #2b2b2b;
-}
-
-/* ===== КОММЕНТАРИИ ===== */
-.comments-section {
-  margin-top: 50px;
-}
-.comments-section h2 {
-  color: #07660c;
-  margin-bottom: 20px;
-}
-.comment-form {
-  margin-bottom: 30px;
-}
-.comment-form textarea {
-  width: 100%;
-  padding: 12px;
-  background: #2b2b2b;
-  border: 1px solid #80832a;
-  border-radius: 8px;
-  color: white;
-  resize: vertical;
-}
-.comment-form button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background: #07660c;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.comment-item {
-  background: #202020;
-  padding: 15px;
-  border-radius: 8px;
-}
-.comment-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  color: #80832a;
   font-size: 0.9rem;
 }
-.comment-author {
-  font-weight: 600;
-  color: #fff;
-}
-.loading, .error {
-  text-align: center;
-  padding: 50px;
-  color: white;
-}
-.verification-banner, .verification-warning {
-  background: rgba(255,165,0,0.15);
-  border: 1px solid #ffaa00;
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.verify-link {
-  background: #07660c;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  text-decoration: none;
-}
-.login-prompt {
-  text-align: center;
-  padding: 20px;
-  background: #202020;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-.login-prompt a {
-  color: #07660c;
+
+.review-date {
+  font-size: 0.7rem;
+  color: #aaa;
 }
 
-/* ===== МОДАЛЬНОЕ ОКНО (стиль как на всём сайте) ===== */
+.review-rating-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.star-small {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.star-small.active {
+  color: #ffcc00;
+}
+
+.rating-number {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ea344;
+}
+
+.review-content-full {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #ddd;
+}
+
+.empty-reviews {
+  text-align: center;
+  padding: 40px;
+  color: #aaa;
+}
+
+/* Модальное окно */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 3000;
 }
+
 .modal-content {
-  background: #202020;
+  background: #1a1a1a;
   border-radius: 16px;
   width: 90%;
-  max-width: 550px;
-  padding: 25px;
-  border: 1px solid #80832a;
+  max-width: 520px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid rgba(128, 131, 42, 0.3);
 }
-.modal-content h3 {
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(128, 131, 42, 0.2);
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+}
+
+.modal-header h3 {
   color: #07660c;
-  margin-bottom: 20px;
+  margin: 0;
+  font-size: 1.3rem;
 }
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: #aaa;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-modal:hover {
+  color: #ff4444;
+}
+
+.modal-content form {
+  padding: 20px 24px;
+}
+
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
+
 .form-group label {
   display: block;
-  margin-bottom: 8px;
-  color: #e0e0e0;
+  margin-bottom: 6px;
+  color: #9ea344;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
+
+.form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 12px;
-  background: #2b2b2b;
-  border: 1px solid #80832a;
+  padding: 10px 12px;
+  background: #2d2d2d;
+  border: 1px solid rgba(128, 131, 42, 0.3);
   border-radius: 8px;
-  color: white;
+  color: #ffffff;
+  font-size: 0.9rem;
   font-family: inherit;
+}
+
+.form-group textarea {
   resize: vertical;
 }
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #07660c;
+}
+
 .modal-actions {
   display: flex;
-  gap: 15px;
+  justify-content: flex-end;
+  gap: 12px;
   margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(128, 131, 42, 0.2);
 }
-.save-btn, .cancel-btn {
-  flex: 1;
-  padding: 10px;
+
+.btn-cancel {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid rgba(128, 131, 42, 0.4);
+  border-radius: 6px;
+  color: #aaa;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+.btn-submit {
+  padding: 8px 20px;
+  background: #07660c;
   border: none;
   border-radius: 6px;
+  color: white;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
-.save-btn {
-  background: #07660c;
-  color: white;
+
+.btn-submit:hover:not(:disabled) {
+  background: #0a8a10;
 }
-.cancel-btn {
-  background: #b91c1c;
-  color: white;
+
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
-.success-msg {
-  color: #00cc44;
-  margin-top: 15px;
-  text-align: center;
+
+@media (max-width: 768px) {
+  .manga-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .manga-cover {
+    width: 180px;
+    height: 255px;
+  }
+  
+  .manga-title {
+    font-size: 1.4rem;
+  }
+  
+  .manga-meta {
+    justify-content: center;
+  }
+  
+  .meta-item {
+    justify-content: center;
+  }
+  
+  .manga-actions {
+    justify-content: center;
+  }
+  
+  .chapter-link {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .chapter-title {
+    margin-left: 0;
+  }
+  
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .reviews-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .status-dropdown {
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 </style>

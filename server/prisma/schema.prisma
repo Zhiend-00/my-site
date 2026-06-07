@@ -31,6 +31,7 @@ model User {
   readingHistory       ReadingProgress[]
   userMangaStatus      UserMangaStatus[]
   favorites            Manga[]               @relation("UserFavorites")
+  reviews              Review[]
 
   @@map("users")
 }
@@ -58,6 +59,7 @@ model Manga {
   readingProgress   ReadingProgress[]
   userStatuses      UserMangaStatus[]
   favorites         User[]                @relation("UserFavorites")
+  reviews           Review[]
 
   @@map("manga")
 }
@@ -127,7 +129,7 @@ model ForumCategory {
   slug        String       @unique
   topicsCount Int          @default(0) @map("topics_count")
   postsCount  Int          @default(0) @map("posts_count")
-  icon        String?      @default("📁")
+  icon        String?      @default("")
   order       Int          @default(1)
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
@@ -246,4 +248,24 @@ model ChapterSubscription {
 
   @@unique([userId, mangaId])
   @@map("chapter_subscriptions")
+}
+
+model Review {
+  id         BigInt   @id @default(autoincrement())
+  mangaId    BigInt
+  mangaTitle String
+  userId     BigInt
+  userName   String
+  rating     Int
+  content    String   @db.Text
+  status     String   @default("pending") // pending, approved
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@index([mangaId])
+  @@index([userId])
+  @@index([status])
 }

@@ -43,7 +43,7 @@ async function main() {
         ctx.fillText(`Глава ${chNum}`, 400, 650);
         fs.writeFileSync(filePath, canvas.toBuffer('image/png'));
       }
-      console.log(`✅ Созданы страницы для главы ${chNum} манги ${mangaId}`);
+      console.log(` Созданы страницы для главы ${chNum} манги ${mangaId}`);
     }
 
     // Обновляем pagesCount в базе
@@ -71,10 +71,10 @@ async function main() {
     }
     
     await prisma.page.createMany({ data: pagesData });
-    console.log(`✅ Обновлены записи pages для главы ${ch.id}`);
+    console.log(` Обновлены записи pages для главы ${ch.id}`);
   }
   
-  console.log('🎉 Готово! Теперь можно читать мангу.');
+  console.log(' Готово! Теперь можно читать мангу.');
   await prisma.$disconnect();
 }
 

@@ -1,7 +1,7 @@
 import XLSX from 'xlsx';
 import { PrismaClient } from '@prisma/client';
 
-// 👇 ВСТАВЬ СВОЙ EXTERNAL URL ОТ RENDER БАЗЫ
+//  ВСТАВЬ СВОЙ EXTERNAL URL ОТ RENDER БАЗЫ
 const prisma = new PrismaClient({
   datasources: { db: { url: "postgresql://manga_db_9y4q_user:WLxTqdkSGcQc0ymxSOn1dsIrGzCIqZE1@dpg-d7qqr2mgvqtc73b1up70-a.frankfurt-postgres.render.com/manga_db_9y4q" } }
 });
@@ -26,12 +26,12 @@ async function importData() {
           coverImage: row['Обложка'] || '/uploads/covers/default.png',
         },
       });
-      console.log(`✅ ${row['Название']}`);
+      console.log(` ${row['Название']}`);
     } catch (e) {
-      console.error(`❌ Ошибка в "${row['Название']}":`, e.message);
+      console.error(` Ошибка в "${row['Название']}":`, e.message);
     }
   }
-  console.log('🎉 Импорт завершён!');
+  console.log(' Импорт завершён!');
 }
 
 importData().finally(() => prisma.$disconnect());

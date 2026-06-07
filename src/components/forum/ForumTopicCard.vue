@@ -3,10 +3,10 @@
   <div @click="$emit('click')" class="forum-topic-card">
     <!-- Иконки статуса -->
     <div class="topic-status">
-      <span v-if="topic.is_pinned" title="Закреплено" class="status-icon pinned">📌</span>
-      <span v-if="topic.is_locked" title="Закрыто" class="status-icon locked">🔒</span>
-      <span v-if="topic.is_archived" title="Архив" class="status-icon archived">📁</span>
-      <span v-else class="status-icon default">💬</span>
+      <span v-if="topic.is_pinned" title="Закреплено" class="status-icon pinned"></span>
+      <span v-if="topic.is_locked" title="Закрыто" class="status-icon locked"></span>
+      <span v-if="topic.is_archived" title="Архив" class="status-icon archived"></span>
+      <span v-else class="status-icon default"></span>
     </div>
     
     <!-- Основная информация -->
@@ -33,9 +33,9 @@
           class="topic-category"
           @click.stop
         >
-          📁 {{ topic.category?.name || 'Без категории' }}
+           {{ topic.category?.name || 'Без категории' }}
         </router-link>
-        <span class="topic-date">📅 {{ formatDate(topic.created_at) }}</span>
+        <span class="topic-date"> {{ formatDate(topic.created_at) }}</span>
       </div>
       
       <!-- Теги -->
@@ -61,15 +61,15 @@
     <!-- Статистика -->
     <div class="topic-stats">
       <div class="stat-item">
-        <span class="stat-icon">👁</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ topic.views_count || 0 }}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-icon">💬</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ topic.posts_count || 0 }}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-icon">❤</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ topic.likes_count || 0 }}</span>
       </div>
     </div>

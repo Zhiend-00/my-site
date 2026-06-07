@@ -8,7 +8,7 @@
 
       <!-- Баннер о неподтверждённом email -->
       <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="email-verify-banner">
-        <span>⚠️ Ваш Email не подтверждён. Некоторые функции ограничены.</span>
+        <span>️ Ваш Email не подтверждён. Некоторые функции ограничены.</span>
         <router-link to="/verify-email" class="btn-primary">Подтвердить Email</router-link>
       </div>
 
@@ -32,14 +32,14 @@
                 />
               </div>
               <button class="avatar-edit-btn" @click="triggerAvatarUpload" title="Изменить аватар">
-                📷
+                
               </button>
             </div>
             <div class="user-info">
               <h3>{{ authStore.user?.username || 'Гость' }}</h3>
               <p class="user-email">{{ authStore.user?.email }}</p>
               <p class="user-status" :class="{ verified: authStore.user?.emailVerified }">
-                {{ authStore.user?.emailVerified ? '✓ Email подтвержден' : '✗ Email не подтвержден' }}
+                {{ authStore.user?.emailVerified ? ' Email подтвержден' : ' Email не подтвержден' }}
               </p>
               <button
                 v-if="authStore.isLoggedIn && !authStore.user?.emailVerified"
@@ -58,7 +58,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'general' }"
             >
-              <span class="nav-icon">👤</span>
+              <span class="nav-icon"></span>
               <span>Общая информация</span>
             </button>
             <button
@@ -66,7 +66,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'activity' }"
             >
-              <span class="nav-icon">📊</span>
+              <span class="nav-icon"></span>
               <span>Активность</span>
             </button>
             <button
@@ -74,7 +74,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'settings' }"
             >
-              <span class="nav-icon">⚙️</span>
+              <span class="nav-icon">️</span>
               <span>Настройки</span>
             </button>
           </nav>
@@ -111,7 +111,7 @@
                 <div class="info-value">
                   {{ authStore.user?.email }}
                   <span class="email-status" :class="{ verified: authStore.user?.emailVerified }">
-                    {{ authStore.user?.emailVerified ? '✓' : '✗' }}
+                    {{ authStore.user?.emailVerified ? '' : '' }}
                   </span>
                 </div>
               </div>
@@ -132,7 +132,7 @@
 
             <!-- Прогресс чтения за последние 3 дня -->
             <div class="activity-block">
-              <h3>📖 Прогресс чтения (последние 3 дня)</h3>
+              <h3> Прогресс чтения (последние 3 дня)</h3>
               <div v-if="recentProgress.length === 0" class="empty-activity">
                 Нет недавней активности
               </div>
@@ -152,7 +152,7 @@
 
             <!-- Закладки по статусам -->
             <div class="activity-block">
-              <h3>🔖 Закладки</h3>
+              <h3> Закладки</h3>
               <div class="bookmarks-tabs">
                 <button
                   v-for="status in bookmarkStatuses"
@@ -197,30 +197,30 @@
               <div class="settings-group">
                 <h3>Основные</h3>
                 <button @click="openEditProfileModal" class="settings-btn">
-                  <span>✏️</span> Редактировать профиль
+                  <span>️</span> Редактировать профиль
                 </button>
                 <button @click="triggerAvatarUpload" class="settings-btn">
-                  <span>🖼️</span> Изменить аватар
+                  <span>️</span> Изменить аватар
                 </button>
                 <button @click="openChangePasswordModal" class="settings-btn">
-                  <span>🔐</span> Изменить пароль
+                  <span></span> Изменить пароль
                 </button>
                 <button
                   v-if="!authStore.user?.emailVerified"
                   @click="resendVerification"
                   class="settings-btn warning"
                 >
-                  <span>📧</span> Повторно отправить письмо подтверждения
+                  <span></span> Повторно отправить письмо подтверждения
                 </button>
               </div>
 
               <div class="settings-group danger">
                 <h3>Опасная зона</h3>
                 <button @click="logout" class="settings-btn">
-                  <span>🚪</span> Выйти из аккаунта
+                  <span></span> Выйти из аккаунта
                 </button>
                 <button @click="deleteAccount" class="settings-btn danger-btn">
-                  <span>🗑️</span> Удалить аккаунт
+                  <span>️</span> Удалить аккаунт
                 </button>
               </div>
             </div>

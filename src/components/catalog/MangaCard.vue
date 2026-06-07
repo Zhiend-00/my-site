@@ -15,7 +15,7 @@
       </span>
       <!-- Рейтинг -->
       <div v-if="manga.rating" class="rating-badge">
-        ⭐ {{ manga.rating.toFixed(1) }}
+         {{ manga.rating.toFixed(1) }}
       </div>
     </div>
     
@@ -43,13 +43,13 @@
       <!-- Статистика -->
       <div class="manga-stats">
         <span class="stat-item" title="Главы">
-          📖 {{ manga.chaptersCount || 0 }}
+           {{ manga.chaptersCount || 0 }}
         </span>
         <span class="stat-item" title="Просмотры">
-          👁 {{ formatNumber(manga.views_count || 0) }}
+           {{ formatNumber(manga.views_count || 0) }}
         </span>
         <span class="stat-item" title="В избранном">
-          ❤ {{ formatNumber(manga.favorites_count || 0) }}
+           {{ formatNumber(manga.favorites_count || 0) }}
         </span>
       </div>
       

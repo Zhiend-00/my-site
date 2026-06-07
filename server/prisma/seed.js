@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Наполняю базу из db.json...');
+  console.log(' Наполняю базу из db.json...');
   const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'db.json'), 'utf-8'));
 
   // Пользователи
@@ -32,7 +32,7 @@ async function main() {
         }
       });
     }
-    console.log('✅ Пользователи');
+    console.log(' Пользователи');
   }
 
   // Манга и главы
@@ -114,7 +114,7 @@ async function main() {
         }
       }
     }
-    console.log('✅ Манга и главы');
+    console.log(' Манга и главы');
   }
 
   // Форум: категории
@@ -141,7 +141,7 @@ async function main() {
         }
       });
     }
-    console.log('✅ Категории форума');
+    console.log(' Категории форума');
   }
 
 
@@ -152,7 +152,7 @@ async function main() {
       const categoryId = t.category_id || t.categoryId;
       const authorId = t.author_id;
       if (!categoryId || !authorId) {
-        console.warn(`⚠️ Пропущена тема "${t.title}" — нет category_id или author_id`);
+        console.warn(`️ Пропущена тема "${t.title}" — нет category_id или author_id`);
         continue;
       }
       await prisma.forumTopic.upsert({
@@ -176,7 +176,7 @@ async function main() {
         }
       });
     }
-    console.log('✅ Темы форума');
+    console.log(' Темы форума');
   }
 
   // Посты форума
@@ -194,7 +194,7 @@ async function main() {
         }
       });
     }
-    console.log('✅ Посты форума');
+    console.log(' Посты форума');
   }
 
   // Статусы манги пользователей
@@ -215,7 +215,7 @@ async function main() {
         }
       });
     }
-    console.log('✅ Статусы манги');
+    console.log(' Статусы манги');
   }
 
   // Feedback (обратная связь)
@@ -235,15 +235,15 @@ async function main() {
         }
       });
     }
-    console.log('✅ Обратная связь');
+    console.log(' Обратная связь');
   }
 
-  console.log('🎉 Все данные загружены!');
+  console.log(' Все данные загружены!');
 }
 
 main()
   .catch(e => {
-    console.error('❌ Ошибка наполнения базы:', e);
+    console.error(' Ошибка наполнения базы:', e);
     process.exit(1);
   })
   .finally(async () => await prisma.$disconnect());

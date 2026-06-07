@@ -114,7 +114,7 @@ const handleLogout = () => {
   color: var(--color-primary-hover) !important;
 }
 
-/* 🔧 ИСПРАВЛЕНИЕ: горизонтальное расположение элементов внутри user-menu */
+/*  ИСПРАВЛЕНИЕ: горизонтальное расположение элементов внутри user-menu */
 .user-menu {
   display: flex;
   align-items: center;

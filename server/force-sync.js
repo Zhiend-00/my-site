@@ -10,10 +10,10 @@ const prisma = new PrismaClient();
 const CHAPTERS_DIR = path.join(__dirname, '../public/chapters');
 
 async function forceSync() {
-  console.log('🔧 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ СТРАНИЦ...\n');
+  console.log(' ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ СТРАНИЦ...\n');
   
   const chapters = await prisma.chapter.findMany();
-  console.log(`📊 Найдено глав в БД: ${chapters.length}\n`);
+  console.log(` Найдено глав в БД: ${chapters.length}\n`);
   
   let updatedChapters = 0;
   let totalPagesCreated = 0;
@@ -23,11 +23,11 @@ async function forceSync() {
     const chapterNum = chapter.chapterNumber;
     const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
     
-    console.log(`📁 Проверяем: ${chapterDir}`);
+    console.log(` Проверяем: ${chapterDir}`);
     
     if (fs.existsSync(chapterDir)) {
       const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
-      console.log(`   📄 Найдено файлов: ${files.length}`);
+      console.log(`    Найдено файлов: ${files.length}`);
       
       if (files.length > 0) {
         files.sort((a, b) => {
@@ -61,23 +61,23 @@ async function forceSync() {
         
         updatedChapters++;
         totalPagesCreated += files.length;
-        console.log(`   ✅ Глава ${chapterNum}: ${files.length} страниц\n`);
+        console.log(`    Глава ${chapterNum}: ${files.length} страниц\n`);
       } else {
-        console.log(`   ⚠️ Нет изображений\n`);
+        console.log(`   ️ Нет изображений\n`);
       }
     } else {
-      console.log(`   ❌ Папка не существует\n`);
+      console.log(`    Папка не существует\n`);
     }
   }
   
-  console.log(`\n🎉 ГОТОВО!`);
-  console.log(`📊 Обновлено глав: ${updatedChapters}`);
-  console.log(`📄 Создано страниц: ${totalPagesCreated}`);
+  console.log(`\n ГОТОВО!`);
+  console.log(` Обновлено глав: ${updatedChapters}`);
+  console.log(` Создано страниц: ${totalPagesCreated}`);
   
   await prisma.$disconnect();
 }
 
 forceSync().catch(e => {
-  console.error('❌ Ошибка:', e);
+  console.error(' Ошибка:', e);
   prisma.$disconnect();
 });

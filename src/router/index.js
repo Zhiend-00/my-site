@@ -69,7 +69,7 @@ const routes = [
     component: () => import('@/views/NotificationsView.vue'),
     meta: { requiresAuth: true }
   },
-  // 👇 ВОТ ЭТО ВАЖНО – СТРАНИЦА ПОДТВЕРЖДЕНИЯ EMAIL
+  //  ВОТ ЭТО ВАЖНО – СТРАНИЦА ПОДТВЕРЖДЕНИЯ EMAIL
   {
     path: '/verify-email',
     name: 'VerifyEmail',

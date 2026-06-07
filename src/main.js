@@ -56,5 +56,13 @@ const initApp = () => {
   return app
 }
 
+// Отключаем все alert
+window.alert = function() {};
+
+// Или с логированием в консоль (для отладки)
+window.alert = function(message) {
+  console.log('[ALERT подавлен]:', message);
+};
+
 // Запуск приложения
 initApp()

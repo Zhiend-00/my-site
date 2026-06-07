@@ -21,7 +21,7 @@
       <!-- Категории форума -->
       <div class="categories-section">
         <div class="section-header">
-          <h2 class="section-title">📁 Категории</h2>
+          <h2 class="section-title">Категории</h2>
         </div>
         <div class="categories-grid">
           <div 
@@ -31,7 +31,7 @@
             :class="{ active: selectedCategory?.id === category.id }"
             @click="selectCategory(category)"
           >
-            <div class="category-icon">{{ category.icon || '📚' }}</div>
+            <div class="category-icon">{{ category.icon || '' }}</div>
             <div class="category-info">
               <h3>{{ category.name }}</h3>
               <p>{{ category.description || 'Обсуждение манги и новинок' }}</p>
@@ -44,7 +44,7 @@
       <!-- Список тем -->
       <div class="topics-section">
         <div class="section-header topics-header">
-          <h2 class="section-title">{{ selectedCategory ? selectedCategory.name : '📖 Все темы' }}</h2>
+          <h2 class="section-title">{{ selectedCategory ? selectedCategory.name : 'Все темы' }}</h2>
           <button @click="openCreateTopicModal" class="create-topic-btn">+ Создать тему</button>
         </div>
 
@@ -54,7 +54,7 @@
         </div>
 
         <div v-else-if="filteredTopics.length === 0" class="empty-state">
-          <p>😔 Тем не найдено</p>
+          <p>Тем не найдено</p>
           <button @click="openCreateTopicModal" class="create-first-btn">Создать первую тему</button>
         </div>
 
@@ -66,13 +66,13 @@
             @click="goToTopic(topic.id)"
           >
             <div class="topic-left">
-              <div class="topic-icon">💬</div>
+              <div class="topic-icon"></div>
               <div class="topic-details">
                 <h3 class="topic-title">{{ topic.title }}</h3>
                 <div class="topic-meta">
-                  <span class="topic-author">👤 {{ topic.author?.username || 'Пользователь' }}</span>
-                  <span class="topic-date">📅 {{ formatDate(topic.created_at) }}</span>
-                  <span class="topic-category" v-if="!selectedCategory">📁 {{ getCategoryName(topic.category_id) }}</span>
+                  <span class="topic-author">{{ topic.author?.username || 'Пользователь' }}</span>
+                  <span class="topic-date">{{ formatDate(topic.created_at) }}</span>
+                  <span class="topic-category" v-if="!selectedCategory">{{ getCategoryName(topic.category_id) }}</span>
                 </div>
               </div>
             </div>
@@ -140,8 +140,8 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const categories = ref([
-  { id: 1, name: 'Обсуждение манги', icon: '📖', description: 'Обсуждаем сюжеты, персонажей и новинки' },
-  { id: 2, name: 'Новости и анонсы', icon: '📰', description: 'Самые свежие новости мира манги' },
+  { id: 1, name: 'Обсуждение манги', icon: '', description: 'Обсуждаем сюжеты, персонажей и новинки' },
+  { id: 2, name: 'Новости и анонсы', icon: '', description: 'Самые свежие новости мира манги' },
 ]);
 
 // Хранилище постов для каждой темы
@@ -155,6 +155,7 @@ const loadPostsFromStorage = () => {
   } else {
     postsStore.value = {};
   }
+  savePostsToStorage();
 };
 
 // Сохранение постов в localStorage
@@ -203,6 +204,30 @@ const loadTopicsFromStorage = () => {
         author: { username: 'admin' },
         created_at: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
         views: 49
+      },
+      {
+        id: 5,
+        category_id: 1,
+        title: 'Список правил платформы',
+        author: { username: 'zhiend00' },
+        created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
+        views: 15
+      },
+      {
+        id: 6,
+        category_id: null,
+        title: 'Избранный богами',
+        author: { username: 'zhiend00' },
+        created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
+        views: 8
+      },
+      {
+        id: 7,
+        category_id: null,
+        title: 'Лунный бог',
+        author: { username: 'zhiend00' },
+        created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
+        views: 12
       }
     ];
     saveTopicsToStorage();
@@ -371,6 +396,9 @@ const createTopic = async () => {
     showCreateModal.value = false;
     newTopic.value = { category_id: '', title: '', content: '' };
     
+    // Отправляем событие обновления для админ-панели
+    window.dispatchEvent(new CustomEvent('forumDataUpdated'));
+    
   } catch (error) {
     console.error('Ошибка создания темы:', error);
     alert('Ошибка создания темы: ' + (error.message || 'Попробуйте позже'));
@@ -387,6 +415,12 @@ const refreshData = () => {
     loadTopicsFromStorage();
     loadPostsFromStorage();
   }, 100);
+};
+
+// Обработчик события обновления из админ-панели
+const handleForumUpdate = () => {
+  loadTopicsFromStorage();
+  loadPostsFromStorage();
 };
 
 const loadCategories = async () => {
@@ -406,6 +440,7 @@ onMounted(() => {
   loadCategories();
   
   window.addEventListener('focus', refreshData);
+  window.addEventListener('forumDataUpdated', handleForumUpdate);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       refreshData();
@@ -415,6 +450,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('focus', refreshData);
+  window.removeEventListener('forumDataUpdated', handleForumUpdate);
   document.removeEventListener('visibilitychange', refreshData);
   if (refreshTimer) clearTimeout(refreshTimer);
 });

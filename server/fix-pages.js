@@ -10,12 +10,12 @@ const prisma = new PrismaClient();
 const CHAPTERS_DIR = path.join(__dirname, '../public/chapters');
 
 async function fixPages() {
-  console.log('🔧 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ СТРАНИЦ\n');
+  console.log(' ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ СТРАНИЦ\n');
   console.log('=' .repeat(60));
   
   // Получаем все главы из БД
   const chapters = await prisma.chapter.findMany();
-  console.log(`📊 Найдено глав в БД: ${chapters.length}\n`);
+  console.log(` Найдено глав в БД: ${chapters.length}\n`);
   
   let totalPagesCreated = 0;
   let chaptersWithPages = 0;
@@ -26,12 +26,12 @@ async function fixPages() {
     const chapterNum = chapter.chapterNumber;
     const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
     
-    console.log(`📁 Манга ${mangaId}, Глава ${chapterNum}`);
+    console.log(` Манга ${mangaId}, Глава ${chapterNum}`);
     console.log(`   Путь: ${chapterDir}`);
     
     if (fs.existsSync(chapterDir)) {
       const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
-      console.log(`   📄 Найдено файлов: ${files.length}`);
+      console.log(`    Найдено файлов: ${files.length}`);
       
       if (files.length > 0) {
         // Сортируем файлы
@@ -43,7 +43,7 @@ async function fixPages() {
         
         // Удаляем старые записи
         const deleted = await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
-        console.log(`   🗑️ Удалено старых записей: ${deleted.count}`);
+        console.log(`   ️ Удалено старых записей: ${deleted.count}`);
         
         // Создаем новые записи
         const pagesData = [];
@@ -56,7 +56,7 @@ async function fixPages() {
         }
         
         const created = await prisma.page.createMany({ data: pagesData });
-        console.log(`   ✅ СОЗДАНО СТРАНИЦ: ${created.count}`);
+        console.log(`    СОЗДАНО СТРАНИЦ: ${created.count}`);
         
         // Обновляем количество страниц в главе
         if (chapter.pagesCount !== files.length) {
@@ -64,32 +64,32 @@ async function fixPages() {
             where: { id: chapter.id },
             data: { pagesCount: files.length }
           });
-          console.log(`   📊 Обновлено pagesCount: ${chapter.pagesCount} → ${files.length}`);
+          console.log(`    Обновлено pagesCount: ${chapter.pagesCount} → ${files.length}`);
         }
         
         totalPagesCreated += files.length;
         chaptersWithPages++;
       } else {
-        console.log(`   ⚠️ НЕТ ИЗОБРАЖЕНИЙ в папке!`);
+        console.log(`   ️ НЕТ ИЗОБРАЖЕНИЙ в папке!`);
         chaptersWithoutPages++;
       }
     } else {
-      console.log(`   ❌ ПАПКА НЕ СУЩЕСТВУЕТ: ${chapterDir}`);
+      console.log(`    ПАПКА НЕ СУЩЕСТВУЕТ: ${chapterDir}`);
       chaptersWithoutPages++;
     }
     console.log('');
   }
   
   console.log('=' .repeat(60));
-  console.log(`\n🎉 РЕЗУЛЬТАТ:`);
-  console.log(`   📊 Глав с файлами: ${chaptersWithPages}`);
-  console.log(`   📊 Глав без файлов: ${chaptersWithoutPages}`);
-  console.log(`   📄 ВСЕГО СОЗДАНО СТРАНИЦ: ${totalPagesCreated}`);
+  console.log(`\n РЕЗУЛЬТАТ:`);
+  console.log(`    Глав с файлами: ${chaptersWithPages}`);
+  console.log(`    Глав без файлов: ${chaptersWithoutPages}`);
+  console.log(`    ВСЕГО СОЗДАНО СТРАНИЦ: ${totalPagesCreated}`);
   
   await prisma.$disconnect();
 }
 
 fixPages().catch(e => {
-  console.error('❌ ОШИБКА:', e);
+  console.error(' ОШИБКА:', e);
   prisma.$disconnect();
 });

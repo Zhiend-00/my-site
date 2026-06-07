@@ -3,7 +3,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Создание новой темы</h2>
-        <button @click="$emit('close')" class="close-btn">✕</button>
+        <button @click="$emit('close')" class="close-btn"></button>
       </div>
       <form @submit.prevent="submit">
         <div class="form-group">

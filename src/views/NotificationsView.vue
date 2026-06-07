@@ -29,7 +29,7 @@ const demoNotifications = [
   { id: 'demo3', type: 'forum_reply', message: 'Новый ответ в теме «Любимая манга»', read: true, createdAt: new Date(Date.now()-86400000).toISOString() }
 ]
 
-const getIcon = type => ({ new_chapter:'📖', forum_reply:'💬', like:'❤️', system:'ℹ️' }[type] || '🔔')
+const getIcon = type => ({ new_chapter:'', forum_reply:'', like:'️', system:'ℹ️' }[type] || '')
 const formatTime = dateStr => {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff/60000)

@@ -12,10 +12,10 @@
       <div class="category-controls">
         <div class="search-container">
           <input v-model="searchQuery" @input="onSearch" placeholder="Поиск в категории..." class="search-input" />
-          <button @click="searchTopics" class="search-btn">🔍</button>
+          <button @click="searchTopics" class="search-btn"></button>
         </div>
         <button v-if="authStore.isLoggedIn" @click="showNewTopicModal = true" class="new-topic-btn">
-          📝 Создать тему
+           Создать тему
         </button>
       </div>
 
@@ -26,7 +26,7 @@
       </div>
 
       <div v-else-if="topics.length === 0" class="empty-state">
-        <div class="empty-icon">💬</div>
+        <div class="empty-icon"></div>
         <h3>В этой категории пока нет тем</h3>
         <p>Будьте первым, кто создаст тему!</p>
       </div>
@@ -34,21 +34,21 @@
       <div v-else class="topics-list">
         <div v-for="topic in topics" :key="topic.id" class="topic-card" @click="goToTopic(topic.id)">
           <div class="topic-status">
-            <span v-if="topic.is_pinned" class="status-icon pinned">📌</span>
-            <span v-else-if="topic.is_locked" class="status-icon locked">🔒</span>
-            <span v-else class="status-icon default">💬</span>
+            <span v-if="topic.is_pinned" class="status-icon pinned"></span>
+            <span v-else-if="topic.is_locked" class="status-icon locked"></span>
+            <span v-else class="status-icon default"></span>
           </div>
           <div class="topic-main">
             <h3 class="topic-title">{{ topic.title }}</h3>
             <div class="topic-meta">
-              <span>👤 {{ topic.author_name || 'Аноним' }}</span>
-              <span>📅 {{ formatDate(topic.created_at) }}</span>
-              <span>👁 {{ topic.views || 0 }} просмотров</span>
+              <span> {{ topic.author_name || 'Аноним' }}</span>
+              <span> {{ formatDate(topic.created_at) }}</span>
+              <span> {{ topic.views || 0 }} просмотров</span>
             </div>
           </div>
           <div class="topic-stats">
-            <div class="stat">💬 {{ topic.posts_count || 0 }}</div>
-            <div class="stat">❤ {{ topic.likes_count || 0 }}</div>
+            <div class="stat"> {{ topic.posts_count || 0 }}</div>
+            <div class="stat"> {{ topic.likes_count || 0 }}</div>
           </div>
         </div>
       </div>

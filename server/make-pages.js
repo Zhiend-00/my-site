@@ -12,6 +12,6 @@ for (const ch of db.chapters) {
     const file = path.join(dir, `${i}.png`);
     if (!fs.existsSync(file)) fs.writeFileSync(file, emptyPNG);
   }
-  console.log(`✅ Глава ${ch.chapter_number} манги ${ch.manga_id}`);
+  console.log(` Глава ${ch.chapter_number} манги ${ch.manga_id}`);
 }
-console.log('🎉 Готово!');
+console.log(' Готово!');

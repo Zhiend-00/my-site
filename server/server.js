@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
       cb(null, true);
@@ -103,7 +103,7 @@ async function sendPasswordResetEmail(email, token) {
 async function sendAdminFeedbackNotification(feedback) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) {
-    console.warn('⚠️ ADMIN_EMAIL не задан в .env, уведомление не отправлено');
+    console.warn('ADMIN_EMAIL не задан в .env, уведомление не отправлено');
     return;
   }
 
@@ -122,10 +122,10 @@ async function sendAdminFeedbackNotification(feedback) {
         <p>Просмотреть в админ-панели: <a href="${process.env.FRONTEND_URL}/admin">${process.env.FRONTEND_URL}/admin</a></p>
       `,
     });
-    console.log(`📧 Уведомление о новом сообщении отправлено на ${adminEmail}`);
+    console.log(`Уведомление о новом сообщении отправлено на ${adminEmail}`);
   } catch (error) {
-    console.error('❌ Ошибка отправки уведомления администратору:', error);
-    throw new Error('Не удалось отправить письмо администратору. Проверьте настройки почты.');
+    console.error('Ошибка отправки уведомления администратору:', error);
+    throw new Error('Не удалось отправить письмо администратору.');
   }
 }
 
@@ -534,15 +534,13 @@ app.post('/api/chapters', authenticateToken, requireAdmin, async (req, res) => {
 app.patch('/api/chapters/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = parseFloat(req.params.id);
-    const { title, chapter_number, manga_id } = req.body;
+    const { title, chapter_number } = req.body;
     
-    // Проверяем, существует ли глава
     const existingChapter = await prisma.chapter.findUnique({ where: { id } });
     if (!existingChapter) {
       return res.status(404).json({ message: 'Глава не найдена' });
     }
     
-    // Проверяем, не существует ли уже глава с таким номером в этой манге
     if (chapter_number && chapter_number !== existingChapter.chapterNumber) {
       const duplicate = await prisma.chapter.findFirst({
         where: {
@@ -582,12 +580,10 @@ app.delete('/api/chapters/:id', authenticateToken, requireAdmin, async (req, res
   res.json({ message: 'Глава удалена' });
 });
 
-// ========== ЗАГРУЗКА ГЛАВЫ ZIP (исправленная) ==========
+// ========== ЗАГРУЗКА ГЛАВЫ ZIP ==========
 app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.single('pages'), async (req, res) => {
   try {
-    console.log('📤 Начало загрузки главы...');
-    console.log('Body:', req.body);
-    console.log('File:', req.file ? req.file.originalname : 'нет файла');
+    console.log('Начало загрузки главы...');
     
     const { mangaId, chapterNumber, title } = req.body;
     
@@ -603,7 +599,6 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
       return res.status(404).json({ message: 'Манга не найдена' });
     }
 
-    // ПРОВЕРЯЕМ, существует ли уже такая глава
     const existingChapter = await prisma.chapter.findFirst({
       where: {
         mangaId: BigInt(mangaId),
@@ -611,77 +606,6 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
       }
     });
 
-    if (existingChapter) {
-      // Если глава существует, удаляем старые страницы и перезаписываем
-      console.log(`⚠️ Глава ${chapterNumber} уже существует, обновляем...`);
-      await prisma.page.deleteMany({ where: { chapterId: existingChapter.id } });
-      
-      const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
-      if (fs.existsSync(chapterDir)) {
-        fs.rmSync(chapterDir, { recursive: true, force: true });
-      }
-      fs.mkdirSync(chapterDir, { recursive: true });
-      
-      const zip = new AdmZip(req.file.path);
-      const entries = zip.getEntries();
-      
-      const imageEntries = entries.filter(entry => {
-        const ext = path.extname(entry.entryName).toLowerCase();
-        return !entry.isDirectory && ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext);
-      });
-      
-      imageEntries.sort((a, b) => {
-        const aName = path.basename(a.entryName);
-        const bName = path.basename(b.entryName);
-        return aName.localeCompare(bName, undefined, { numeric: true });
-      });
-
-      let pageNumber = 1;
-      const pagesData = [];
-      
-      for (const entry of imageEntries) {
-        const ext = path.extname(entry.entryName).toLowerCase();
-        const fileName = `${pageNumber}${ext}`;
-        const filePath = path.join(chapterDir, fileName);
-        fs.writeFileSync(filePath, entry.getData());
-        pagesData.push({
-          pageNumber: pageNumber,
-          imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNumber}/${fileName}`,
-        });
-        pageNumber++;
-      }
-
-      // Обновляем существующую главу
-      const updatedChapter = await prisma.chapter.update({
-        where: { id: existingChapter.id },
-        data: {
-          title: title || `Глава ${chapterNumber}`,
-          pagesCount: pagesData.length,
-          updatedAt: new Date()
-        }
-      });
-
-      for (const page of pagesData) {
-        await prisma.page.create({
-          data: {
-            chapterId: existingChapter.id,
-            pageNumber: page.pageNumber,
-            imageUrl: page.imageUrl,
-          },
-        });
-      }
-
-      fs.unlinkSync(req.file.path);
-      
-      console.log(`✅ Глава ${chapterNumber} обновлена, страниц: ${pagesData.length}`);
-      
-      return res.json({ 
-        message: `Глава ${chapterNumber} обновлена (${pagesData.length} стр.)`, 
-        chapter: updatedChapter
-      });
-    }
-
-    // Новая глава - создаем с нуля
     const chapterDir = path.join(CHAPTERS_DIR, mangaId.toString(), `chapter${chapterNumber}`);
     if (!fs.existsSync(chapterDir)) {
       fs.mkdirSync(chapterDir, { recursive: true });
@@ -723,18 +647,29 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
 
     fs.unlinkSync(req.file.path);
 
-    // Генерируем уникальный ID для главы
-    const chapterId = parseFloat(`${Date.now()}.${Math.floor(Math.random()*10000)}`);
-    
-    const chapter = await prisma.chapter.create({
-      data: {
-        id: chapterId,
-        mangaId: BigInt(mangaId),
-        chapterNumber: parseInt(chapterNumber),
-        title: title || `Глава ${chapterNumber}`,
-        pagesCount: pagesData.length,
-      },
-    });
+    let chapter;
+    if (existingChapter) {
+      await prisma.page.deleteMany({ where: { chapterId: existingChapter.id } });
+      chapter = await prisma.chapter.update({
+        where: { id: existingChapter.id },
+        data: {
+          title: title || `Глава ${chapterNumber}`,
+          pagesCount: pagesData.length,
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      const chapterId = parseFloat(`${Date.now()}.${Math.floor(Math.random()*10000)}`);
+      chapter = await prisma.chapter.create({
+        data: {
+          id: chapterId,
+          mangaId: BigInt(mangaId),
+          chapterNumber: parseInt(chapterNumber),
+          title: title || `Глава ${chapterNumber}`,
+          pagesCount: pagesData.length,
+        },
+      });
+    }
 
     for (const page of pagesData) {
       await prisma.page.create({
@@ -752,7 +687,7 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
       data: { chaptersCount } 
     });
 
-    console.log(`✅ Новая глава ${chapterNumber} создана, страниц: ${pagesData.length}`);
+    console.log(`Глава ${chapterNumber} загружена, страниц: ${pagesData.length}`);
     
     res.json({ 
       message: `Глава ${chapterNumber} успешно загружена (${pagesData.length} стр.)`, 
@@ -764,7 +699,7 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
       }
     });
   } catch (error) {
-    console.error('❌ Ошибка загрузки главы:', error);
+    console.error('Ошибка загрузки главы:', error);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -772,22 +707,21 @@ app.post('/api/admin/upload-chapter', authenticateToken, requireAdmin, upload.si
   }
 });
 
-// ========== ИМПОРТ ИЗ EXCEL (исправленный) ==========
+// ========== ИМПОРТ ИЗ EXCEL ==========
 app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
   try {
-    console.log('📥 Начало импорта из Excel...');
+    console.log('Начало импорта из Excel...');
     
     if (!req.file) {
       return res.status(400).json({ message: 'Файл не загружен' });
     }
 
-    // Читаем Excel файл
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
     
-    console.log(`📊 Найдено ${rows.length} записей для импорта`);
+    console.log(`Найдено ${rows.length} записей для импорта`);
     
     let imported = 0;
     let errors = [];
@@ -796,7 +730,6 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       try {
-        // Получаем название (поддерживаем разные варианты)
         let title = row['title'] || row['Название'] || row['название'] || '';
         title = String(title).trim();
         
@@ -805,18 +738,16 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
           continue;
         }
 
-        // Проверяем, существует ли уже такая манга
         const existing = await prisma.manga.findFirst({
           where: { title: title }
         });
 
         if (existing) {
-          console.log(`⚠️ Манга "${title}" уже существует, пропускаем`);
+          console.log(`Манга "${title}" уже существует, пропускаем`);
           skipped++;
           continue;
         }
 
-        // Парсим альтернативные названия
         let alternativeTitles = [];
         const altTitlesRaw = row['alternative_titles'] || row['Альтернативные названия'] || '';
         if (altTitlesRaw) {
@@ -824,40 +755,33 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
           alternativeTitles = altStr.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
         }
 
-        // Парсим описание
         let description = row['description'] || row['Описание'] || '';
         description = String(description).trim();
 
-        // Парсим обложку
         let coverImage = row['cover_image'] || row['Обложка'] || '';
         coverImage = String(coverImage).trim();
         if (!coverImage || coverImage === '') {
           coverImage = '/uploads/covers/default.png';
         }
 
-        // Парсим автора
         let author = row['author'] || row['Автор'] || '';
         author = String(author).trim();
 
-        // Парсим художника
         let artist = row['artist'] || row['Художник'] || '';
         artist = String(artist).trim();
 
-        // Парсим статус
         let status = row['status'] || row['Статус'] || 'ongoing';
         status = String(status).toLowerCase().trim();
         if (!['ongoing', 'completed', 'hiatus', 'cancelled'].includes(status)) {
           status = 'ongoing';
         }
 
-        // Парсим год
         let year = null;
         const yearRaw = row['year'] || row['Год'];
         if (yearRaw && !isNaN(parseInt(yearRaw))) {
           year = parseInt(yearRaw);
         }
 
-        // Парсим жанры
         let genres = [];
         const genresRaw = row['genres'] || row['Жанры'] || '';
         if (genresRaw) {
@@ -865,21 +789,18 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
           genres = genresStr.split(',').map(g => g.trim().replace(/[\[\]"]/g, '')).filter(g => g);
         }
 
-        // Парсим рейтинг
         let rating = 0;
         const ratingRaw = row['rating'] || row['Рейтинг'];
         if (ratingRaw && !isNaN(parseFloat(ratingRaw))) {
           rating = parseFloat(ratingRaw);
         }
 
-        // Парсим просмотры
         let views = 0;
         const viewsRaw = row['views'] || row['Просмотры'];
         if (viewsRaw && !isNaN(parseInt(viewsRaw))) {
           views = parseInt(viewsRaw);
         }
 
-        // Парсим количество глав
         let chaptersCount = 0;
         const chaptersCountRaw = row['chapters_count'] || row['Количество глав'];
         if (chaptersCountRaw && !isNaN(parseInt(chaptersCountRaw))) {
@@ -903,20 +824,19 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
 
         await prisma.manga.create({ data: mangaData });
         imported++;
-        console.log(`✅ Импортирована: ${title}`);
+        console.log(`Импортирована: ${title}`);
 
       } catch (rowError) {
-        console.error(`❌ Ошибка в строке ${i + 2}:`, rowError);
+        console.error(`Ошибка в строке ${i + 2}:`, rowError);
         errors.push(`Строка ${i + 2}: ${rowError.message}`);
       }
     }
 
-    // Удаляем временный файл
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
 
-    console.log(`🎉 Импорт завершен: добавлено ${imported}, пропущено ${skipped}, ошибок: ${errors.length}`);
+    console.log(`Импорт завершен: добавлено ${imported}, пропущено ${skipped}, ошибок: ${errors.length}`);
     
     let message = `Импортировано ${imported} записей`;
     if (skipped > 0) message += `, пропущено (уже существуют): ${skipped}`;
@@ -930,7 +850,7 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
     });
     
   } catch (error) {
-    console.error('❌ Ошибка импорта из Excel:', error);
+    console.error('Ошибка импорта из Excel:', error);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -941,7 +861,7 @@ app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.sing
 // ========== ЗАГРУЗКА ОБЛОЖКИ ==========
 app.post('/api/admin/upload-cover', authenticateToken, requireAdmin, upload.single('cover'), async (req, res) => {
   try {
-    console.log('📤 Загрузка обложки...');
+    console.log('Загрузка обложки...');
     if (!req.file) {
       return res.status(400).json({ message: 'Файл не загружен' });
     }
@@ -955,153 +875,15 @@ app.post('/api/admin/upload-cover', authenticateToken, requireAdmin, upload.sing
     
     const coverUrl = `/uploads/covers/${fileName}`;
     
-    console.log(`✅ Обложка загружена: ${coverUrl}`);
+    console.log(`Обложка загружена: ${coverUrl}`);
     
     res.json({ 
       message: 'Обложка загружена', 
       coverUrl: coverUrl 
     });
   } catch (error) {
-    console.error('❌ Ошибка загрузки обложки:', error);
+    console.error('Ошибка загрузки обложки:', error);
     res.status(500).json({ message: 'Ошибка загрузки обложки: ' + error.message });
-  }
-});
-
-// ========== ИМПОРТ ИЗ EXCEL ==========
-app.post('/api/admin/import-manga', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
-  try {
-    console.log('📥 Начало импорта из Excel...');
-    
-    if (!req.file) {
-      return res.status(400).json({ message: 'Файл не загружен' });
-    }
-
-    // Читаем Excel файл
-    const workbook = XLSX.readFile(req.file.path);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    
-    console.log(`📊 Найдено ${rows.length} записей для импорта`);
-    
-    let imported = 0;
-    let errors = [];
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      try {
-        // Парсим данные из строки
-        const title = row['title'] || row['Название'] || '';
-        if (!title) {
-          errors.push(`Строка ${i + 2}: отсутствует название`);
-          continue;
-        }
-
-        // Парсим альтернативные названия
-        let alternativeTitles = [];
-        const altTitlesRaw = row['alternative_titles'] || row['Альтернативные названия'] || '';
-        if (altTitlesRaw) {
-          if (typeof altTitlesRaw === 'string') {
-            alternativeTitles = altTitlesRaw.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
-          } else if (Array.isArray(altTitlesRaw)) {
-            alternativeTitles = altTitlesRaw;
-          }
-        }
-
-        // Парсим жанры
-        let genres = [];
-        const genresRaw = row['genres'] || row['Жанры'] || '';
-        if (genresRaw) {
-          if (typeof genresRaw === 'string') {
-            genres = genresRaw.split(',').map(s => s.trim().replace(/[\[\]"]/g, '')).filter(s => s);
-          } else if (Array.isArray(genresRaw)) {
-            genres = genresRaw;
-          }
-        }
-
-        // Парсим год
-        let year = null;
-        const yearRaw = row['year'] || row['Год'];
-        if (yearRaw && !isNaN(parseInt(yearRaw))) {
-          year = parseInt(yearRaw);
-        }
-
-        // Парсим рейтинг
-        let rating = 0;
-        const ratingRaw = row['rating'] || row['Рейтинг'];
-        if (ratingRaw && !isNaN(parseFloat(ratingRaw))) {
-          rating = parseFloat(ratingRaw);
-        }
-
-        // Парсим просмотры
-        let views = 0;
-        const viewsRaw = row['views'] || row['Просмотры'];
-        if (viewsRaw && !isNaN(parseInt(viewsRaw))) {
-          views = parseInt(viewsRaw);
-        }
-
-        // Парсим количество глав
-        let chaptersCount = 0;
-        const chaptersCountRaw = row['chapters_count'] || row['Количество глав'];
-        if (chaptersCountRaw && !isNaN(parseInt(chaptersCountRaw))) {
-          chaptersCount = parseInt(chaptersCountRaw);
-        }
-
-        const mangaData = {
-          title: title,
-          alternativeTitles: alternativeTitles,
-          description: row['description'] || row['Описание'] || '',
-          coverImage: row['cover_image'] || row['Обложка'] || '/uploads/covers/default.png',
-          author: row['author'] || row['Автор'] || '',
-          artist: row['artist'] || row['Художник'] || '',
-          status: row['status'] || row['Статус'] || 'ongoing',
-          year: year,
-          genres: genres,
-          rating: rating,
-          views: BigInt(views),
-          chaptersCount: chaptersCount,
-        };
-
-        // Проверяем, существует ли уже манга с таким названием
-        const existing = await prisma.manga.findFirst({
-          where: { title: mangaData.title }
-        });
-
-        if (existing) {
-          console.log(`⚠️ Манга "${title}" уже существует, пропускаем`);
-          errors.push(`Строка ${i + 2}: манга "${title}" уже существует`);
-          continue;
-        }
-
-        await prisma.manga.create({ data: mangaData });
-        imported++;
-        console.log(`✅ Импортирована: ${title}`);
-
-      } catch (rowError) {
-        console.error(`❌ Ошибка в строке ${i + 2}:`, rowError);
-        errors.push(`Строка ${i + 2}: ${rowError.message}`);
-      }
-    }
-
-    // Удаляем временный файл
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    console.log(`🎉 Импорт завершен: добавлено ${imported}, ошибок: ${errors.length}`);
-    
-    res.json({ 
-      message: `Импортировано ${imported} записей${errors.length > 0 ? `, ошибок: ${errors.length}` : ''}`,
-      imported: imported,
-      errors: errors.length > 0 ? errors : undefined
-    });
-    
-  } catch (error) {
-    console.error('❌ Ошибка импорта из Excel:', error);
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).json({ message: 'Ошибка импорта из Excel: ' + error.message });
   }
 });
 
@@ -1169,76 +951,131 @@ app.patch('/api/notifications/:id/read', authenticateToken, async (req, res) => 
   res.json({ message: 'Прочитано' });
 });
 
-// ========== Форум ==========
-app.get('/api/forum_categories', async (req, res) => {
-  const categories = await prisma.forumCategory.findMany({ orderBy: { order: 'asc' } });
-  res.json(categories);
-});
+// ========== ФОРУМ (ПОЛНОСТЬЮ ИСПРАВЛЕН) ==========
 
+// GET - получить все темы
 app.get('/api/forum_topics', async (req, res) => {
-  const { categoryId, page = 1, limit = 20 } = req.query;
-  const where = categoryId ? { categoryId: BigInt(categoryId) } : {};
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const take = parseInt(limit);
-  const [topics, total] = await Promise.all([
-    prisma.forumTopic.findMany({
-      where, skip, take,
-      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
-      include: { author: { select: { username: true } }, category: { select: { name: true } } },
-    }),
-    prisma.forumTopic.count({ where }),
-  ]);
-  res.json({ topics: topics.map(t => ({ ...t, author_name: t.author?.username, category_name: t.category?.name })), total, page: parseInt(page), totalPages: Math.ceil(total / take) });
+  try {
+    const { categoryId, page = 1, limit = 20 } = req.query;
+    const where = categoryId ? { categoryId: BigInt(categoryId) } : {};
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    
+    const [topics, total] = await Promise.all([
+      prisma.forumTopic.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+        include: {
+          author: { select: { username: true } },
+          category: { select: { name: true } }
+        }
+      }),
+      prisma.forumTopic.count({ where })
+    ]);
+    
+    const result = topics.map(topic => ({
+      id: topic.id.toString(),
+      title: topic.title,
+      content: topic.content,
+      createdAt: topic.createdAt,
+      views: topic.views,
+      postsCount: topic.postsCount,
+      isPinned: topic.isPinned,
+      isLocked: topic.isLocked,
+      categoryId: topic.categoryId?.toString(),
+      category_name: topic.category?.name,
+      author: topic.author,
+      author_name: topic.author?.username,
+      posts_count: topic.postsCount
+    }));
+    
+    res.json({ topics: result, total, page: parseInt(page), totalPages: Math.ceil(total / take) });
+  } catch (error) {
+    console.error('Ошибка получения тем форума:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
 });
 
-app.post('/api/forum_topics', authenticateToken, requireVerified, async (req, res) => {
-  const { title, content, categoryId } = req.body;
-  const topic = await prisma.forumTopic.create({
-    data: {
-      title, content,
-      categoryId: BigInt(categoryId),
-      authorId: BigInt(req.user.id),
-    },
-  });
-  await prisma.forumCategory.update({ where: { id: BigInt(categoryId) }, data: { topicsCount: { increment: 1 } } });
-  res.status(201).json(topic);
-});
-
+// GET - получить одну тему
 app.get('/api/forum_topics/:id', async (req, res) => {
-  const topic = await prisma.forumTopic.findUnique({
-    where: { id: BigInt(req.params.id) },
-    include: {
-      author: { select: { username: true } },
-      category: true,
-      posts: { include: { author: { select: { username: true } } }, orderBy: { createdAt: 'asc' } },
-    },
-  });
-  if (!topic) return res.status(404).json({ error: 'Тема не найдена' });
-  await prisma.forumTopic.update({ where: { id: BigInt(req.params.id) }, data: { views: { increment: 1 } } });
-  res.json({ ...topic, author_name: topic.author?.username, posts: topic.posts.map(p => ({ ...p, author_name: p.author?.username })) });
+  try {
+    const topic = await prisma.forumTopic.findUnique({
+      where: { id: BigInt(req.params.id) },
+      include: {
+        author: { select: { username: true } },
+        category: true,
+        posts: { include: { author: { select: { username: true } } }, orderBy: { createdAt: 'asc' } }
+      }
+    });
+    if (!topic) return res.status(404).json({ error: 'Тема не найдена' });
+    
+    await prisma.forumTopic.update({ where: { id: BigInt(req.params.id) }, data: { views: { increment: 1 } } });
+    res.json({ ...topic, author_name: topic.author?.username, posts: topic.posts.map(p => ({ ...p, author_name: p.author?.username })) });
+  } catch (error) {
+    console.error('Ошибка получения темы:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
 });
 
+// POST - создать тему
+app.post('/api/forum_topics', authenticateToken, requireVerified, async (req, res) => {
+  try {
+    const { title, content, categoryId } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: BigInt(req.user.id) } });
+    const isAdmin = user?.role === 'admin';
+    
+    const topic = await prisma.forumTopic.create({
+      data: {
+        title, content,
+        categoryId: BigInt(categoryId),
+        authorId: BigInt(req.user.id),
+      },
+    });
+    
+    await prisma.forumCategory.update({ 
+      where: { id: BigInt(categoryId) }, 
+      data: { topicsCount: { increment: 1 } } 
+    });
+    
+    res.status(201).json({ ...topic, author: { username: isAdmin ? 'Админ' : user?.username } });
+  } catch (error) {
+    console.error('Ошибка создания темы:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST - создать пост
 app.post('/api/forum_posts', authenticateToken, requireVerified, async (req, res) => {
   try {
     const { topicId, content } = req.body;
     const topic = await prisma.forumTopic.findUnique({ where: { id: BigInt(topicId) } });
     if (!topic) return res.status(404).json({ message: 'Тема не найдена' });
     if (topic.isLocked) return res.status(403).json({ message: 'Тема закрыта' });
+    
+    const user = await prisma.user.findUnique({ where: { id: BigInt(req.user.id) } });
+    const isAdmin = user?.role === 'admin';
+    
     const post = await prisma.forumPost.create({
       data: { content, topicId: BigInt(topicId), authorId: BigInt(req.user.id) },
-      include: { author: { select: { username: true } } },
+      include: { author: { select: { username: true } } }
     });
+    
     await prisma.forumTopic.update({ where: { id: BigInt(topicId) }, data: { postsCount: { increment: 1 } } });
+    
     if (topic.authorId !== BigInt(req.user.id)) {
-      await createNotification(topic.authorId, 'forum_reply', `${req.user.username} ответил в теме "${topic.title}"`, `/forum/topic/${topicId}`);
+      await createNotification(topic.authorId, 'forum_reply', `${isAdmin ? 'Админ' : req.user.username} ответил в теме "${topic.title}"`, `/forum/topic/${topicId}`);
     }
-    res.status(201).json({ ...post, author_name: post.author.username });
+    
+    res.status(201).json({ ...post, author_name: isAdmin ? 'Админ' : post.author.username });
   } catch (error) {
     console.error('Ошибка создания поста:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
+// GET - последние посты
 app.get('/api/forum/posts/recent', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -1263,6 +1100,7 @@ app.get('/api/forum/posts/recent', async (req, res) => {
   }
 });
 
+// GET - популярные темы
 app.get('/api/forum/topics/popular', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
@@ -1384,7 +1222,7 @@ app.post('/api/feedback', async (req, res) => {
     } catch (emailError) {
       console.error('Ошибка отправки уведомления:', emailError);
       return res.status(500).json({
-        message: 'Ваше сообщение сохранено, но уведомление администратору отправить не удалось. Попробуйте позже.'
+        message: 'Ваше сообщение сохранено, но уведомление администратору отправить не удалось.'
       });
     }
 
@@ -1420,7 +1258,7 @@ app.post('/api/admin/feedback/:id/reply', authenticateToken, requireAdmin, async
         html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
       });
     } catch (emailError) {
-      console.error('❌ Ошибка при отправке ответа пользователю:', emailError);
+      console.error('Ошибка при отправке ответа пользователю:', emailError);
       return res.status(500).json({ 
         message: 'Не удалось отправить письмо. Проверьте настройки почты на сервере.' 
       });
@@ -1448,10 +1286,6 @@ app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) =>
   res.json({ users: usersCount, manga: mangaCount, totalViews: viewsTotal._sum.views || 0, popular });
 });
 
-app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
-  res.json({ message: 'Синхронизация выполнена (функционал в разработке)' });
-});
-
 app.get('/api/cover/default', (req, res) => {
   res.setHeader('Content-Type', 'image/png');
   res.send(emptyPNG);
@@ -1467,112 +1301,11 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
   res.json(chapters);
 });
 
-// Раздача статики
-app.use(express.static(path.join(__dirname, '../dist')));
-
-
-
-// Раздача статики из папки dist (путь подкорректируйте под своё расположение)
-app.use(express.static(path.join(__dirname, '../dist')));
-
-// Для Vue Router в режиме history: все не-API запросы отправляем на index.html
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
-});
-
-// ========== СИНХРОНИЗАЦИЯ СТРАНИЦ (РАБОЧАЯ) ==========
+// ========== СИНХРОНИЗАЦИЯ ==========
 app.post('/api/admin/sync-pages', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    console.log('🔄 НАЧАЛО СИНХРОНИЗАЦИИ СТРАНИЦ...');
+    console.log('Начало синхронизации страниц...');
     
-    // Получаем все главы из БД
-    const chapters = await prisma.chapter.findMany();
-    console.log(`📊 Найдено глав в БД: ${chapters.length}`);
-    
-    let updatedChapters = 0;
-    let totalPagesCreated = 0;
-    const errors = [];
-    
-    for (const chapter of chapters) {
-      const mangaId = chapter.mangaId.toString();
-      const chapterNum = chapter.chapterNumber;
-      const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
-      
-      console.log(`📁 Проверяем папку: ${chapterDir}`);
-      
-      if (fs.existsSync(chapterDir)) {
-        const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
-        console.log(`📄 Найдено файлов в папке: ${files.length}`);
-        
-        if (files.length > 0) {
-          // Сортируем файлы по номеру страницы
-          files.sort((a, b) => {
-            const numA = parseInt(a.match(/\d+/)?.[0] || 0);
-            const numB = parseInt(b.match(/\d+/)?.[0] || 0);
-            return numA - numB;
-          });
-          
-          // Удаляем старые записи страниц
-          const deleted = await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
-          console.log(`🗑️ Удалено старых записей страниц: ${deleted.count}`);
-          
-          // Создаем новые записи
-          const pagesData = [];
-          for (let i = 0; i < files.length; i++) {
-            pagesData.push({
-              chapterId: chapter.id,
-              pageNumber: i + 1,
-              imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${files[i]}`,
-            });
-          }
-          
-          const created = await prisma.page.createMany({ data: pagesData });
-          console.log(`✅ Создано новых записей страниц: ${created.count}`);
-          
-          // Обновляем количество страниц в главе
-          if (chapter.pagesCount !== files.length) {
-            await prisma.chapter.update({
-              where: { id: chapter.id },
-              data: { pagesCount: files.length }
-            });
-            console.log(`📊 Обновлено количество страниц в главе ${chapterNum}: ${files.length}`);
-          }
-          
-          updatedChapters++;
-          totalPagesCreated += files.length;
-        } else {
-          console.log(`⚠️ В папке нет изображений для главы ${chapterNum}`);
-        }
-      } else {
-        console.log(`❌ Папка не существует: ${chapterDir}`);
-        errors.push(`Глава ${chapterNum} манги ${mangaId}: папка не найдена`);
-      }
-    }
-    
-    console.log(`\n🎉 СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА!`);
-    console.log(`📊 Обновлено глав: ${updatedChapters}`);
-    console.log(`📄 Создано страниц: ${totalPagesCreated}`);
-    
-    res.json({ 
-      success: true,
-      message: `Синхронизация завершена: обновлено ${updatedChapters} глав, создано ${totalPagesCreated} страниц`,
-      updatedChapters,
-      totalPagesCreated,
-      errors: errors.length > 0 ? errors : undefined
-    });
-  } catch (error) {
-    console.error('❌ Ошибка синхронизации страниц:', error);
-    res.status(500).json({ success: false, message: 'Ошибка синхронизации: ' + error.message });
-  }
-});
-
-// ========== ПОЛНАЯ СИНХРОНИЗАЦИЯ (РАБОЧАЯ) ==========
-app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    console.log('🔄 НАЧАЛО ПОЛНОЙ СИНХРОНИЗАЦИИ...');
-    
-    // 1. Синхронизируем страницы
     const chapters = await prisma.chapter.findMany();
     let updatedChapters = 0;
     let totalPagesCreated = 0;
@@ -1618,7 +1351,67 @@ app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) =>
       }
     }
     
-    // 2. Обновляем количество глав в манге
+    res.json({ 
+      success: true,
+      message: `Синхронизация завершена: обновлено ${updatedChapters} глав, создано ${totalPagesCreated} страниц`,
+      updatedChapters,
+      totalPagesCreated
+    });
+  } catch (error) {
+    console.error('Ошибка синхронизации страниц:', error);
+    res.status(500).json({ success: false, message: 'Ошибка синхронизации: ' + error.message });
+  }
+});
+
+app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    console.log('Начало полной синхронизации...');
+    
+    const chapters = await prisma.chapter.findMany();
+    let updatedChapters = 0;
+    let totalPagesCreated = 0;
+    
+    for (const chapter of chapters) {
+      const mangaId = chapter.mangaId.toString();
+      const chapterNum = chapter.chapterNumber;
+      const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
+      
+      if (fs.existsSync(chapterDir)) {
+        const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+        
+        if (files.length > 0) {
+          files.sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+            const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+            return numA - numB;
+          });
+          
+          await prisma.page.deleteMany({ where: { chapterId: chapter.id } });
+          
+          const pagesData = [];
+          for (let i = 0; i < files.length; i++) {
+            pagesData.push({
+              chapterId: chapter.id,
+              pageNumber: i + 1,
+              imageUrl: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${files[i]}`,
+            });
+          }
+          
+          await prisma.page.createMany({ data: pagesData });
+          
+          if (chapter.pagesCount !== files.length) {
+            await prisma.chapter.update({
+              where: { id: chapter.id },
+              data: { pagesCount: files.length }
+            });
+          }
+          
+          updatedChapters++;
+          totalPagesCreated += files.length;
+        }
+      }
+    }
+    
     const mangaListAll = await prisma.manga.findMany();
     for (const manga of mangaListAll) {
       const chaptersCount = await prisma.chapter.count({ where: { mangaId: manga.id } });
@@ -1630,10 +1423,6 @@ app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) =>
       }
     }
     
-    console.log(`\n🎉 ПОЛНАЯ СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА!`);
-    console.log(`📊 Обновлено глав: ${updatedChapters}`);
-    console.log(`📄 Создано страниц: ${totalPagesCreated}`);
-    
     res.json({ 
       success: true,
       message: `Полная синхронизация завершена! Обновлено: ${updatedChapters} глав, ${totalPagesCreated} страниц`,
@@ -1641,17 +1430,15 @@ app.post('/api/admin/sync', authenticateToken, requireAdmin, async (req, res) =>
       totalPagesCreated
     });
   } catch (error) {
-    console.error('❌ Ошибка полной синхронизации:', error);
+    console.error('Ошибка полной синхронизации:', error);
     res.status(500).json({ success: false, message: 'Ошибка синхронизации: ' + error.message });
   }
 });
 
-// ========== ПРЯМАЯ ЗАГРУЗКА СТРАНИЦ ПО ФАЙЛАМ ==========
+// ========== РЕАЛЬНЫЕ СТРАНИЦЫ ИЗ ФАЙЛОВ ==========
 app.get('/api/chapters/:id/real-pages', async (req, res) => {
   try {
     const chapterId = parseFloat(req.params.id);
-    
-    // Получаем главу из БД
     const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
     if (!chapter) {
       return res.status(404).json({ error: 'Глава не найдена' });
@@ -1661,25 +1448,22 @@ app.get('/api/chapters/:id/real-pages', async (req, res) => {
     const chapterNum = chapter.chapterNumber;
     const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
     
-    // ЧИТАЕМ ФАЙЛЫ ПРЯМО С ДИСКА
     if (!fs.existsSync(chapterDir)) {
-      return res.status(404).json({ error: 'Папка с изображениями не найдена', path: chapterDir });
+      return res.status(404).json({ error: 'Папка с изображениями не найдена' });
     }
     
     const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
     
     if (files.length === 0) {
-      return res.status(404).json({ error: 'Нет изображений в папке', path: chapterDir });
+      return res.status(404).json({ error: 'Нет изображений в папке' });
     }
     
-    // Сортируем по номеру страницы
     files.sort((a, b) => {
       const numA = parseInt(a.match(/\d+/)?.[0] || 0);
       const numB = parseInt(b.match(/\d+/)?.[0] || 0);
       return numA - numB;
     });
     
-    // ФОРМИРУЕМ СТРАНИЦЫ ПРЯМО ИЗ ФАЙЛОВ (БЕЗ БД)
     const pages = files.map((file, index) => ({
       page_number: index + 1,
       image_url: `/uploads/chapters/${mangaId}/chapter${chapterNum}/${file}`
@@ -1692,21 +1476,18 @@ app.get('/api/chapters/:id/real-pages', async (req, res) => {
       title: chapter.title,
       pages: pages,
       total_pages: pages.length,
-      from_disk: true  // маркер, что страницы из файлов
+      from_disk: true
     });
-    
   } catch (error) {
     console.error('Ошибка:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ========== ПОЛУЧИТЬ РЕАЛЬНОЕ КОЛИЧЕСТВО СТРАНИЦ ИЗ ПАПКИ ==========
 app.get('/api/admin/chapter-pages-count/:chapterId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const chapterId = parseFloat(req.params.chapterId);
     const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
-    
     if (!chapter) {
       return res.status(404).json({ error: 'Глава не найдена' });
     }
@@ -1716,29 +1497,22 @@ app.get('/api/admin/chapter-pages-count/:chapterId', authenticateToken, requireA
     const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
     
     let pagesCount = 0;
-    
     if (fs.existsSync(chapterDir)) {
       const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
       pagesCount = files.length;
     }
     
-    res.json({
-      chapterId: chapter.id,
-      pagesCount: pagesCount,
-      path: chapterDir
-    });
+    res.json({ chapterId: chapter.id, pagesCount: pagesCount });
   } catch (error) {
     console.error('Ошибка:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ========== ОБНОВИТЬ КОЛИЧЕСТВО СТРАНИЦ В БД ==========
 app.post('/api/admin/sync-chapter-pages/:chapterId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const chapterId = parseFloat(req.params.chapterId);
     const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
-    
     if (!chapter) {
       return res.status(404).json({ error: 'Глава не найдена' });
     }
@@ -1748,37 +1522,25 @@ app.post('/api/admin/sync-chapter-pages/:chapterId', authenticateToken, requireA
     const chapterDir = path.join(CHAPTERS_DIR, mangaId, `chapter${chapterNum}`);
     
     let pagesCount = 0;
-    
     if (fs.existsSync(chapterDir)) {
       const files = fs.readdirSync(chapterDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
       pagesCount = files.length;
-      
-      await prisma.chapter.update({
-        where: { id: chapter.id },
-        data: { pagesCount: pagesCount }
-      });
+      await prisma.chapter.update({ where: { id: chapter.id }, data: { pagesCount: pagesCount } });
     }
     
-    res.json({
-      success: true,
-      chapterId: chapter.id,
-      pagesCount: pagesCount
-    });
+    res.json({ success: true, chapterId: chapter.id, pagesCount: pagesCount });
   } catch (error) {
     console.error('Ошибка:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ========== СМЕНА ПАРОЛЯ (ИСПРАВЛЕНО) ==========
+// ========== СМЕНА ПАРОЛЯ ==========
 app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const userId = BigInt(req.user.id);
     
-    console.log('🔄 Смена пароля для пользователя:', userId);
-    
-    // Проверяем обязательные поля
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Все поля обязательны' });
     }
@@ -1787,42 +1549,157 @@ app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Новый пароль должен содержать минимум 6 символов' });
     }
     
-    // Получаем пользователя из БД через Prisma
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    
     if (!user) {
       return res.status(404).json({ message: 'Пользователь не найден' });
     }
     
-    // Проверяем текущий пароль
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
-    
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Неверный текущий пароль' });
     }
     
-    // Хешируем новый пароль
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Обновляем пароль в БД через Prisma
     await prisma.user.update({
       where: { id: userId },
-      data: { 
-        password: hashedPassword,
-        updatedAt: new Date()
-      }
+      data: { password: hashedPassword, updatedAt: new Date() }
     });
     
-    console.log('✅ Пароль успешно изменен для пользователя:', userId);
     res.json({ message: 'Пароль успешно изменен' });
-    
   } catch (error) {
-    console.error('❌ Ошибка смены пароля:', error);
+    console.error('Ошибка смены пароля:', error);
     res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
   }
 });
 
-// ========== ЗАПУСК СЕРВЕРА ==========
+// ========== РЕЦЕНЗИИ ==========
+
+// Получить рецензии для конкретной манги (только одобренные)
+app.get('/api/manga/:id/reviews', async (req, res) => {
+  try {
+    const mangaId = BigInt(req.params.id);
+    const reviews = await prisma.review.findMany({
+      where: { mangaId, status: 'approved' },
+      include: { user: { select: { username: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(reviews.map(r => ({
+      id: r.id.toString(),
+      mangaId: r.mangaId.toString(),
+      userName: r.user.username,
+      rating: r.rating,
+      content: r.content,
+      createdAt: r.createdAt
+    })));
+  } catch (error) {
+    console.error('Ошибка получения рецензий:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// Отправить рецензию на модерацию
+app.post('/api/manga/reviews', authenticateToken, async (req, res) => {
+  try {
+    const { mangaId, mangaTitle, rating, content } = req.body;
+    const userId = BigInt(req.user.id);
+    const userName = req.user.username || 'Пользователь';
+    
+    if (!content || content.trim().length < 10) {
+      return res.status(400).json({ message: 'Рецензия должна содержать минимум 10 символов' });
+    }
+    
+    if (!rating || rating < 1 || rating > 10) {
+      return res.status(400).json({ message: 'Оценка должна быть от 1 до 10' });
+    }
+    
+    const review = await prisma.review.create({
+      data: {
+        mangaId: BigInt(mangaId),
+        mangaTitle: mangaTitle,
+        userId: userId,
+        userName: userName,
+        rating: rating,
+        content: content.trim(),
+        status: 'pending'
+      }
+    });
+    
+    res.status(201).json({ 
+      message: 'Рецензия отправлена на модерацию',
+      review: {
+        id: review.id.toString(),
+        mangaId: review.mangaId.toString(),
+        mangaTitle: review.mangaTitle,
+        userName: review.userName,
+        rating: review.rating,
+        content: review.content,
+        createdAt: review.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка отправки рецензии:', error);
+    res.status(500).json({ message: 'Ошибка сервера: ' + error.message });
+  }
+});
+
+// Получить рецензии на модерации (только для админа)
+app.get('/api/admin/reviews', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { status: 'pending' },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(reviews.map(r => ({
+      id: r.id.toString(),
+      mangaId: r.mangaId.toString(),
+      mangaTitle: r.mangaTitle,
+      userName: r.userName,
+      rating: r.rating,
+      content: r.content,
+      createdAt: r.createdAt,
+      status: r.status
+    })));
+  } catch (error) {
+    console.error('Ошибка получения рецензий на модерации:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// Одобрить рецензию (только для админа)
+app.post('/api/admin/reviews/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    const review = await prisma.review.update({
+      where: { id },
+      data: { status: 'approved' }
+    });
+    res.json({ message: 'Рецензия одобрена', review });
+  } catch (error) {
+    console.error('Ошибка одобрения рецензии:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// Отклонить/удалить рецензию (только для админа)
+app.delete('/api/admin/reviews/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = BigInt(req.params.id);
+    await prisma.review.delete({ where: { id } });
+    res.json({ message: 'Рецензия удалена' });
+  } catch (error) {
+    console.error('Ошибка удаления рецензии:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// ========== СТАТИКА И ЗАПУСК ==========
+app.use(express.static(path.join(__dirname, '../dist')));
+
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return;
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

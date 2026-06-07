@@ -2,7 +2,7 @@
   <div class="home">
     <section class="slider-section">
       <div class="container">
-        <h2 class="section-heading">Слайдер с информацией</h2>
+        <h1 class="welcome-title">Добро пожаловать в Forgotten Team</h1>
         <HeroSlider />
       </div>
     </section>
@@ -55,24 +55,21 @@
 
     <section class="feedback-section">
       <div class="container">
-        <h2 class="section-heading">📨 Обратная связь</h2>
+        <h2 class="section-heading">Обратная связь</h2>
         <form @submit.prevent="submitFeedback" class="feedback-form">
           <div class="input-group">
-            <span class="input-icon">👤</span>
             <input v-model="form.name" placeholder="Ваше имя" required />
           </div>
           <div class="input-group">
-            <span class="input-icon">📧</span>
             <input v-model="form.email" type="email" placeholder="Email" required />
           </div>
           <div class="input-group">
-            <span class="input-icon">💬</span>
             <textarea v-model="form.message" placeholder="Сообщение" rows="4" required></textarea>
           </div>
           <button type="submit" :disabled="sending" class="btn btn-submit">
             {{ sending ? 'Отправка...' : 'Отправить сообщение' }}
           </button>
-          <p v-if="success" class="success-msg">✅ Сообщение отправлено</p>
+          <p v-if="success" class="success-msg">Сообщение отправлено</p>
         </form>
       </div>
     </section>
@@ -146,11 +143,42 @@ onMounted(async () => {
   padding: 0 20px;
 }
 
-.section-heading {
-  font-size: 1.8rem;
+/* Заголовок "Добро пожаловать" */
+.welcome-title {
+  font-size: 3.2rem;
+  font-weight: 740;
   color: #07660c;
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 60px;
+  letter-spacing: 5px;
+}
+
+/* Секция слайдера - увеличен отступ снизу */
+.slider-section {
+  margin-bottom: 60px;
+}
+
+/* Секция последней манги - увеличен отступ снизу */
+.latest-section {
+  margin-bottom: 60px;
+}
+
+/* Секция форума - увеличен отступ снизу */
+.forum-section {
+  margin-bottom: 60px;
+}
+
+/* Секция обратной связи - увеличен отступ снизу */
+.feedback-section {
+  margin-bottom: 40px;
+}
+
+.section-heading {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #07660c;
+  text-align: center;
+  margin-bottom: 25px;
   position: relative;
 }
 .section-heading::after {
@@ -159,7 +187,7 @@ onMounted(async () => {
   width: 60px;
   height: 3px;
   background: #80832a;
-  margin: 10px auto 0;
+  margin: 12px auto 0;
   border-radius: 2px;
 }
 
@@ -228,28 +256,33 @@ onMounted(async () => {
 }
 .forum-item {
   cursor: pointer;
-  padding: 12px 0;
+  padding: 14px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 0;
 }
 .forum-item:last-child {
   border-bottom: none;
 }
 .forum-item:hover {
   background: #2b2b2b;
-  border-radius: 6px;
+  padding-left: 24px;
+  padding-right: 24px;
+  margin: 0 -8px;
 }
 .forum-item-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .forum-item-title {
   font-weight: 500;
   color: #07660c;
+  font-size: 1rem;
 }
 .forum-item-meta {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #a0a0a0;
 }
 
@@ -272,11 +305,6 @@ onMounted(async () => {
 }
 .input-group:focus-within {
   border-color: #07660c;
-}
-.input-icon {
-  font-size: 1.2rem;
-  margin-right: 10px;
-  opacity: 0.8;
 }
 .input-group input,
 .input-group textarea {
@@ -315,5 +343,38 @@ onMounted(async () => {
   text-align: center;
   color: #07660c;
   margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .welcome-title {
+    font-size: 1.6rem;
+  }
+  .section-heading {
+    font-size: 1.4rem;
+  }
+  .slider-section {
+    margin-bottom: 40px;
+  }
+  .latest-section {
+    margin-bottom: 40px;
+  }
+  .forum-section {
+    margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-title {
+    font-size: 1.3rem;
+  }
+  .slider-section {
+    margin-bottom: 30px;
+  }
+  .latest-section {
+    margin-bottom: 30px;
+  }
+  .forum-section {
+    margin-bottom: 30px;
+  }
 }
 </style>

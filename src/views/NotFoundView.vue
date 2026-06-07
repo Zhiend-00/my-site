@@ -26,7 +26,7 @@
               class="search-input"
             >
             <button @click="performSearch" class="search-button">
-              🔍
+              
             </button>
           </div>
         </div>
@@ -35,19 +35,19 @@
         <h3>Популярные разделы:</h3>
         <div class="links-grid">
           <router-link to="/catalog" class="link-item">
-            <span>📚</span>
+            <span></span>
             Каталог манги
           </router-link>
           <router-link to="/forum" class="link-item">
-            <span>💬</span>
+            <span></span>
             Форум
           </router-link>
           <router-link to="/profile" class="link-item">
-            <span>👤</span>
+            <span></span>
             Профиль
           </router-link>
           <router-link to="/login" class="link-item">
-            <span>🔐</span>
+            <span></span>
             Вход в аккаунт
           </router-link>
         </div>

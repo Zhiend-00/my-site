@@ -59,9 +59,9 @@
                   <td>{{ m.author || '—' }}</td>
                   <td><span :class="'status-badge ' + m.status">{{ getStatusText(m.status) }}</span></td>
                   <td>{{ m.chaptersCount || m.chapters_count || 0 }}</td>
-                  <td>
-                    <button @click="openMangaModal(m)" class="btn-sm" title="Редактировать">✏️</button>
-                    <button @click="deleteManga(m.id)" class="btn-sm danger" title="Удалить">🗑️</button>
+                  <td class="actions">
+                    <button @click="openMangaModal(m)" class="btn-sm edit">✏️</button>
+                    <button @click="deleteManga(m.id)" class="btn-sm delete">🗑️</button>
                   </td>
                 </tr>
               </tbody>
@@ -70,7 +70,7 @@
           </div>
         </section>
 
-        <!-- Главы -->
+                        <!-- Главы -->
         <section v-if="activeTab === 'chapters'">
           <div class="header-row">
             <h2>Управление главами</h2>
@@ -93,7 +93,6 @@
                   <th>Название</th>
                   <th>Страниц</th>
                   <th>Просмотров</th>
-                  <th>Дата создания</th>
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -105,18 +104,13 @@
                   <td>{{ ch.title || '—' }}</td>
                   <td class="pages-count">
                     <span v-if="loadingPages[ch.id]" class="loading-small">⏳</span>
-                    <span v-else-if="realPagesCount[ch.id] !== undefined && realPagesCount[ch.id] > 0" class="has-pages-real">
-                      📄 {{ realPagesCount[ch.id] }}
-                    </span>
-                    <span v-else-if="realPagesCount[ch.id] === 0" class="no-pages">📄 0</span>
-                    <span v-else class="loading-small">❓</span>
-                    <button @click="checkRealPages(ch.id)" class="btn-icon-small" title="Проверить файлы">🔄</button>
+                    <span v-else-if="realPagesCount[ch.id] > 0" class="has-pages-real">{{ realPagesCount[ch.id] }}</span>
+                    <span v-else class="no-pages">0</span>
                   </td>
                   <td>👁 {{ ch.views || 0 }}</td>
-                  <td>{{ formatDate(ch.created_at) }}</td>
                   <td class="actions">
-                    <button @click="openChapterModal(ch)" class="btn-sm" title="Редактировать">✏️</button>
-                    <button @click="deleteChapter(ch.id)" class="btn-sm danger" title="Удалить">🗑️</button>
+                    <button @click="openChapterModal(ch)" class="btn-sm edit">✏️</button>
+                    <button @click="deleteChapter(ch.id)" class="btn-sm delete">🗑️</button>
                   </td>
                 </tr>
               </tbody>
@@ -152,8 +146,8 @@
                     </select>
                   </td>
                   <td>{{ formatDate(u.created_at) }}</td>
-                  <td>
-                    <button v-if="u.id !== authStore.user?.id" @click="deleteUser(u.id)" class="btn-sm danger" title="Удалить">🗑️</button>
+                  <td class="actions">
+                    <button v-if="u.id !== authStore.user?.id" @click="deleteUser(u.id)" class="btn-sm delete">🗑️</button>
                   </td>
                 </tr>
               </tbody>
@@ -164,71 +158,178 @@
 
         <!-- Форум -->
         <section v-if="activeTab === 'forum'">
-          <h2>Форум</h2>
-          <div class="tab-nav">
-            <button @click="forumSubtab = 'categories'" :class="{ active: forumSubtab === 'categories' }">Категории</button>
-            <button @click="forumSubtab = 'topics'" :class="{ active: forumSubtab === 'topics' }">Темы</button>
-            <button @click="forumSubtab = 'posts'" :class="{ active: forumSubtab === 'posts' }">Посты</button>
-          </div>
+          <h2>Управление форумом</h2>
           
-          <div v-if="forumSubtab === 'categories'" class="sub-panel">
-            <div class="header-row">
-              <h3>Категории</h3>
-              <button @click="openCategoryModal()" class="btn-primary">+ Категория</button>
+          <div class="forum-admin-tabs">
+            <button @click="switchForumTab('categories')" :class="{ active: forumSubtab === 'categories' }" class="forum-tab-btn">Категории</button>
+            <button @click="switchForumTab('topics')" :class="{ active: forumSubtab === 'topics' }" class="forum-tab-btn">Темы</button>
+            <button @click="switchForumTab('posts')" :class="{ active: forumSubtab === 'posts' }" class="forum-tab-btn">Посты</button>
+            <button @click="switchForumTab('reviews')" :class="{ active: forumSubtab === 'reviews' }" class="forum-tab-btn">Рецензии</button>
+          </div>
+
+          <!-- Категории -->
+          <div v-if="forumSubtab === 'categories'" class="forum-admin-section">
+            <div class="section-header">
+              <h3>Категории форума</h3>
+              <button @click="openCategoryModal()" class="btn-primary">+ Добавить категорию</button>
             </div>
             <div class="table-responsive">
-              <table v-if="categories.length" class="table">
+              <table class="admin-table">
                 <thead>
-                  <tr><th>ID</th><th>Название</th><th>Slug</th><th>Порядок</th><th>Действия</th></tr>
+                  <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Slug</th>
+                    <th>Описание</th>
+                    <th>Порядок</th>
+                    <th>Действия</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="cat in categories" :key="cat.id">
+                  <tr v-for="cat in forumCategories" :key="cat.id">
                     <td>{{ cat.id }}</td>
-                    <td>{{ cat.name }}</td>
+                    <td><strong>{{ cat.name }}</strong></td>
                     <td>{{ cat.slug }}</td>
-                    <td>{{ cat.order }}</td>
-                    <td>
-                      <button @click="openCategoryModal(cat)" class="btn-sm" title="Редактировать">✏️</button>
-                      <button @click="deleteCategory(cat.id)" class="btn-sm danger" title="Удалить">🗑️</button>
+                    <td>{{ cat.description || '—' }}</td>
+                    <td>{{ cat.order || 0 }}</td>
+                    <td class="actions">
+                      <button @click="openCategoryModal(cat)" class="btn-sm edit">✏️</button>
+                      <button @click="deleteCategoryItem(cat.id)" class="btn-sm delete">🗑️</button>
                     </td>
                   </tr>
                 </tbody>
-              </table>
-              <div v-else class="empty">Нет категорий</div>
-            </div>
-          </div>
-          
-          <div v-if="forumSubtab === 'topics'" class="sub-panel">
-            <div class="table-responsive">
-              <table v-if="forumTopics.length" class="table">
-                <thead><tr><th>ID</th><th>Заголовок</th><th>Автор</th><th>Действия</th></tr></thead>
-                <tbody>
-                  <tr v-for="t in forumTopics" :key="t.id">
-                    <td>{{ t.id }}</td>
-                    <td>{{ t.title }}</td>
-                    <td>{{ t.author?.username }}</td>
-                    <td><button @click="deleteTopic(t.id)" class="btn-sm danger" title="Удалить">🗑️</button></td>
+                <tbody v-if="forumCategories.length === 0">
+                  <tr>
+                    <td colspan="6" class="empty-table">Нет категорий. Создайте первую!</td>
                   </tr>
                 </tbody>
               </table>
-              <div v-else class="empty">Нет тем</div>
             </div>
           </div>
-          
-          <div v-if="forumSubtab === 'posts'" class="sub-panel">
+
+           <!-- Темы -->
+          <div v-if="forumSubtab === 'topics'" class="forum-admin-section">
+            <div class="section-header">
+              <h3>Темы форума</h3>
+              <button @click="openTopicModal()" class="btn-primary">+ Создать тему</button>
+            </div>
             <div class="table-responsive">
-              <table v-if="forumPosts.length" class="table">
-                <thead><tr><th>ID</th><th>Содержание</th><th>Автор</th><th>Действия</th></tr></thead>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Заголовок</th>
+                    <th>Категория</th>
+                    <th>Автор</th>
+                    <th>Ответов</th>
+                    <th>Просмотров</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr v-for="p in forumPosts" :key="p.id">
-                    <td>{{ p.id }}</td>
-                    <td>{{ truncate(p.content, 60) }}</td>
-                    <td>{{ p.author?.username }}</td>
-                    <td><button @click="deletePost(p.id)" class="btn-sm danger" title="Удалить">🗑️</button></td>
+                  <tr v-for="topic in forumTopicsList" :key="topic.id">
+                    <td>{{ topic.id }}</td>
+                    <td><strong>{{ topic.title }}</strong></td>
+                    <td>{{ getCategoryNameById(topic.category_id) }}</td>
+                    <td>{{ topic.author?.username || 'Пользователь' }}</td>
+                    <td>{{ getPostsCountForTopic(topic.id) }}</td>
+                    <td>{{ topic.views || 0 }}</td>
+                    <td>{{ formatDate(topic.created_at) }}</td>
+                    <td class="actions">
+                      <button @click="openTopicModal(topic)" class="btn-sm edit">✏️</button>
+                      <button @click="deleteTopicItem(topic.id)" class="btn-sm delete">🗑️</button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-if="forumTopicsList.length === 0">
+                  <tr>
+                    <td colspan="8" class="empty-table">Нет тем. Создайте первую!</td>
                   </tr>
                 </tbody>
               </table>
-              <div v-else class="empty">Нет постов</div>
+            </div>
+          </div>
+
+                   <!-- Посты -->
+          <div v-if="forumSubtab === 'posts'" class="forum-admin-section">
+            <div class="section-header">
+              <h3>Посты форума</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Содержание</th>
+                    <th>Автор</th>
+                    <th>Тема</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="post in forumPostsList" :key="post.id">
+                    <td>{{ post.id }}</td>
+                    <td class="post-content-preview">{{ truncate(post.content, 60) }}</td>
+                    <td>{{ post.author?.username || 'Пользователь' }}</td>
+                    <td>{{ getTopicTitleById(post.topicId) }}</td>
+                    <td>{{ formatDate(post.created_at) }}</td>
+                    <td class="actions">
+                      <button @click="deletePostItem(post.id)" class="btn-sm delete">🗑️</button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-if="forumPostsList.length === 0">
+                  <tr>
+                    <td colspan="6" class="empty-table">Нет постов</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Рецензии -->
+          <div v-if="forumSubtab === 'reviews'" class="forum-admin-section">
+            <div class="section-header">
+              <h3>Рецензии на модерации</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Манга</th>
+                    <th>Пользователь</th>
+                    <th>Оценка</th>
+                    <th>Текст рецензии</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="review in pendingReviews" :key="review.id">
+                    <td>{{ review.id }}</td>
+                    <td><strong>{{ review.mangaTitle }}</strong></td>
+                    <td>{{ review.userName }}</td>
+                    <td><span class="review-rating">⭐ {{ review.rating }}</span></td>
+                    <td class="review-content">
+                      <span class="review-preview">{{ truncate(review.content, 50) }}</span>
+                      <button @click="openReviewDetailModal(review)" class="btn-sm view" title="Просмотреть полностью">👁️</button>
+                    </td>
+                    <td>{{ formatDate(review.createdAt) }}</td>
+                    <td class="actions">
+                      <button @click="approveReview(review.id)" class="btn-sm approve" title="Одобрить">✅</button>
+                      <button @click="rejectReview(review.id)" class="btn-sm reject" title="Отклонить">❌</button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody v-if="pendingReviews.length === 0">
+                  <tr>
+                    <td colspan="7" class="empty-table">Нет рецензий на модерации</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -248,9 +349,9 @@
                   <td>{{ fb.email }}</td>
                   <td>{{ truncate(fb.message, 50) }}</td>
                   <td><span :class="'status-badge ' + fb.status">{{ getFeedbackStatus(fb.status) }}</span></td>
-                  <td>
-                    <button @click="openFeedbackReply(fb)" class="btn-sm" title="Ответить">✉️</button>
-                    <button @click="deleteFeedback(fb.id)" class="btn-sm danger" title="Удалить">🗑️</button>
+                  <td class="actions">
+                    <button @click="openFeedbackReply(fb)" class="btn-sm">✉️</button>
+                    <button @click="deleteFeedback(fb.id)" class="btn-sm delete">🗑️</button>
                   </td>
                 </tr>
               </tbody>
@@ -263,36 +364,10 @@
         <section v-if="activeTab === 'upload'">
           <h2>📤 Загрузка главы из ZIP архива</h2>
           <div class="upload-form">
-            <div class="form-group">
-              <label>Манга *</label>
-              <select v-model="uploadForm.mangaId" class="form-select">
-                <option value="">Выберите мангу</option>
-                <option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Номер главы *</label>
-                <input type="number" v-model.number="uploadForm.chapterNumber" class="form-input" placeholder="например: 1" />
-              </div>
-              <div class="form-group">
-                <label>Название главы</label>
-                <input type="text" v-model="uploadForm.title" class="form-input" placeholder="Глава 1" />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>ZIP архив с изображениями *</label>
-              <div class="file-upload-area">
-                <input type="file" ref="zipFileInput" accept=".zip" @change="handleZipFileSelect" class="file-input-hidden" />
-                <button type="button" @click="$refs.zipFileInput.click()" class="btn-file">📁 Выбрать ZIP файл</button>
-                <span v-if="selectedFileName" class="file-name">{{ selectedFileName }}</span>
-                <span v-else class="file-name file-name-empty">Файл не выбран</span>
-              </div>
-              <p class="hint">📌 Поддерживаются файлы .zip с изображениями PNG, JPG, WEBP.</p>
-            </div>
-            <button @click="uploadChapterZip" :disabled="uploadForm.submitting || !canUpload" class="btn-primary">
-              {{ uploadForm.submitting ? '⏳ Загрузка...' : '📤 Загрузить главу' }}
-            </button>
+            <div class="form-group"><label>Манга *</label><select v-model="uploadForm.mangaId" class="form-select"><option value="">Выберите мангу</option><option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option></select></div>
+            <div class="form-row"><div class="form-group"><label>Номер главы *</label><input type="number" v-model.number="uploadForm.chapterNumber" class="form-input" placeholder="например: 1" /></div><div class="form-group"><label>Название главы</label><input type="text" v-model="uploadForm.title" class="form-input" placeholder="Глава 1" /></div></div>
+            <div class="form-group"><label>ZIP архив с изображениями *</label><div class="file-upload-area"><input type="file" ref="zipFileInput" accept=".zip" @change="handleZipFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.zipFileInput.click()" class="btn-file">📁 Выбрать ZIP файл</button><span v-if="selectedFileName" class="file-name">{{ selectedFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint">📌 Поддерживаются файлы .zip с изображениями PNG, JPG, WEBP.</p></div>
+            <button @click="uploadChapterZip" :disabled="uploadForm.submitting || !canUpload" class="btn-primary">{{ uploadForm.submitting ? '⏳ Загрузка...' : '📤 Загрузить главу' }}</button>
             <p v-if="uploadForm.result" class="result-msg" :class="{ error: uploadForm.result.includes('Ошибка') }">{{ uploadForm.result }}</p>
           </div>
         </section>
@@ -301,19 +376,8 @@
         <section v-if="activeTab === 'import'">
           <h2>📥 Импорт манги из Excel</h2>
           <div class="upload-form">
-            <div class="form-group">
-              <label>Файл Excel (.xlsx)</label>
-              <div class="file-upload-area">
-                <input type="file" ref="excelFileInput" accept=".xlsx,.xls" @change="handleExcelFileSelect" class="file-input-hidden" />
-                <button type="button" @click="$refs.excelFileInput.click()" class="btn-file">📁 Выбрать Excel файл</button>
-                <span v-if="excelFileName" class="file-name">{{ excelFileName }}</span>
-                <span v-else class="file-name file-name-empty">Файл не выбран</span>
-              </div>
-              <p class="hint">📌 Поддерживаются файлы .xlsx, .xls.</p>
-            </div>
-            <button @click="importMangaFromExcel" :disabled="importing || !excelFileName" class="btn-primary">
-              {{ importing ? '⏳ Импорт...' : '📥 Импортировать' }}
-            </button>
+            <div class="form-group"><label>Файл Excel (.xlsx)</label><div class="file-upload-area"><input type="file" ref="excelFileInput" accept=".xlsx,.xls" @change="handleExcelFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.excelFileInput.click()" class="btn-file">📁 Выбрать Excel файл</button><span v-if="excelFileName" class="file-name">{{ excelFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint">📌 Поддерживаются файлы .xlsx, .xls.</p></div>
+            <button @click="importMangaFromExcel" :disabled="importing || !excelFileName" class="btn-primary">{{ importing ? '⏳ Импорт...' : '📥 Импортировать' }}</button>
             <p v-if="importMessage" class="result-msg" :class="{ error: importMessage.includes('Ошибка') }">{{ importMessage }}</p>
           </div>
         </section>
@@ -329,12 +393,8 @@
           <div class="sync-section">
             <h3>🔄 Синхронизация</h3>
             <div class="sync-buttons">
-              <button @click="syncPages" :disabled="syncing" class="btn-primary">
-                {{ syncing ? '⏳ Синхронизация...' : '📄 Синхронизировать страницы' }}
-              </button>
-              <button @click="syncFull" :disabled="syncingFull" class="btn-primary">
-                {{ syncingFull ? '⏳ Полная синхронизация...' : '🔄 Полная синхронизация' }}
-              </button>
+              <button @click="syncPages" :disabled="syncing" class="btn-primary">{{ syncing ? '⏳ Синхронизация...' : '📄 Синхронизировать страницы' }}</button>
+              <button @click="syncFull" :disabled="syncingFull" class="btn-primary">{{ syncingFull ? '⏳ Полная синхронизация...' : '🔄 Полная синхронизация' }}</button>
             </div>
             <div v-if="syncResult" class="sync-result" :class="{ success: syncResult.success, error: !syncResult.success }">
               <p>{{ syncResult.message }}</p>
@@ -346,7 +406,7 @@
       </main>
     </div>
 
-    <!-- Модальное окно: Манга -->
+    <!-- Модальные окна -->
     <div v-if="showMangaModal" class="modal-overlay" @click.self="closeMangaModal">
       <div class="modal-card">
         <h3>{{ editingManga ? '✏️ Редактировать мангу' : '➕ Добавить мангу' }}</h3>
@@ -357,77 +417,120 @@
           <div class="form-group">
             <label>Обложка</label>
             <div class="cover-upload">
-              <div v-if="mangaForm.cover_image" class="cover-preview">
-                <img :src="getCoverUrl(mangaForm.cover_image)" alt="Обложка" />
-                <button type="button" @click="mangaForm.cover_image = ''" class="remove-cover" title="Удалить">✕</button>
-              </div>
-              <div class="cover-upload-area">
-                <input type="file" ref="coverInput" accept="image/*" @change="uploadCover" class="file-input-hidden" />
-                <button type="button" @click="$refs.coverInput.click()" class="btn-file">🖼️ Выбрать изображение</button>
-                <span class="hint">PNG, JPG до 5MB</span>
-              </div>
+              <div v-if="mangaForm.cover_image" class="cover-preview"><img :src="getCoverUrl(mangaForm.cover_image)" alt="Обложка" /><button type="button" @click="mangaForm.cover_image = ''" class="remove-cover">✕</button></div>
+              <div class="cover-upload-area"><input type="file" ref="coverInput" accept="image/*" @change="uploadCover" class="file-input-hidden" /><button type="button" @click="$refs.coverInput.click()" class="btn-file">🖼️ Выбрать изображение</button><span class="hint">PNG, JPG до 5MB</span></div>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Автор</label><input v-model="mangaForm.author" class="form-input" /></div>
-            <div class="form-group"><label>Художник</label><input v-model="mangaForm.artist" class="form-input" /></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Статус</label><select v-model="mangaForm.status" class="form-select"><option value="ongoing">Онгоинг</option><option value="completed">Завершена</option><option value="hiatus">Перерыв</option><option value="cancelled">Отменена</option></select></div>
-            <div class="form-group"><label>Год</label><input type="number" v-model.number="mangaForm.year" class="form-input" /></div>
-          </div>
+          <div class="form-row"><div class="form-group"><label>Автор</label><input v-model="mangaForm.author" class="form-input" /></div><div class="form-group"><label>Художник</label><input v-model="mangaForm.artist" class="form-input" /></div></div>
+          <div class="form-row"><div class="form-group"><label>Статус</label><select v-model="mangaForm.status" class="form-select"><option value="ongoing">Онгоинг</option><option value="completed">Завершена</option><option value="hiatus">Перерыв</option><option value="cancelled">Отменена</option></select></div><div class="form-group"><label>Год</label><input type="number" v-model.number="mangaForm.year" class="form-input" /></div></div>
           <div class="form-group"><label>Жанры (через запятую)</label><input v-model="mangaForm.genres_str" placeholder="Экшен, Фэнтези, Комедия" class="form-input" /></div>
           <div class="modal-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="button" @click="closeMangaModal" class="btn-secondary">Отмена</button></div>
         </form>
       </div>
     </div>
 
-    <!-- Модальное окно: Глава -->
     <div v-if="showChapterModal" class="modal-overlay" @click.self="closeChapterModal">
       <div class="modal-card">
         <h3>{{ editingChapter ? '✏️ Редактировать главу' : '➕ Добавить главу' }}</h3>
         <form @submit.prevent="saveChapter">
-          <div class="form-group">
-            <label>Манга *</label>
-            <select v-model="chapterForm.manga_id" class="form-select" required>
-              <option value="">Выберите мангу</option>
-              <option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Номер главы *</label>
-              <input type="number" v-model.number="chapterForm.chapter_number" class="form-input" required placeholder="например: 1" />
-            </div>
-            <div class="form-group">
-              <label>Название главы</label>
-              <input v-model="chapterForm.title" class="form-input" placeholder="Глава 1 - Название" />
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button type="submit" class="btn-primary">💾 Сохранить</button>
-            <button type="button" @click="closeChapterModal" class="btn-secondary">Отмена</button>
-          </div>
+          <div class="form-group"><label>Манга *</label><select v-model="chapterForm.manga_id" class="form-select" required><option value="">Выберите мангу</option><option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option></select></div>
+          <div class="form-row"><div class="form-group"><label>Номер главы *</label><input type="number" v-model.number="chapterForm.chapter_number" class="form-input" required placeholder="например: 1" /></div><div class="form-group"><label>Название главы</label><input v-model="chapterForm.title" class="form-input" placeholder="Глава 1 - Название" /></div></div>
+          <div class="modal-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="button" @click="closeChapterModal" class="btn-secondary">Отмена</button></div>
         </form>
       </div>
     </div>
 
-    <!-- Модальное окно: Категория форума -->
+        <!-- Модальное окно для категории (исправленное) -->
     <div v-if="showCategoryModal" class="modal-overlay" @click.self="closeCategoryModal">
       <div class="modal-card">
-        <h3>{{ editingCategory ? '✏️ Редактировать категорию' : '➕ Добавить категорию' }}</h3>
+        <h3>{{ editingCategory ? 'Редактировать категорию' : 'Добавить категорию' }}</h3>
         <form @submit.prevent="saveCategory">
-          <div class="form-group"><label>Название *</label><input v-model="categoryForm.name" class="form-input" /></div>
-          <div class="form-group"><label>Slug *</label><input v-model="categoryForm.slug" class="form-input" /></div>
-          <div class="form-group"><label>Описание</label><textarea v-model="categoryForm.description" rows="3" class="form-textarea"></textarea></div>
-          <div class="form-group"><label>Иконка</label><input v-model="categoryForm.icon" class="form-input" placeholder="📚" /></div>
-          <div class="form-group"><label>Порядок</label><input type="number" v-model.number="categoryForm.order" class="form-input" /></div>
-          <div class="modal-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="button" @click="closeCategoryModal" class="btn-secondary">Отмена</button></div>
+          <div class="form-group">
+            <label>Название *</label>
+            <input v-model="categoryForm.name" type="text" required class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Slug *</label>
+            <input v-model="categoryForm.slug" type="text" required class="form-input" />
+            <small class="form-hint">Уникальный идентификатор, например: manga-discussion</small>
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <textarea v-model="categoryForm.description" rows="3" class="form-textarea"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Иконка</label>
+            <input v-model="categoryForm.icon" type="text" class="form-input" placeholder="📚" />
+          </div>
+          <div class="form-group">
+            <label>Порядок</label>
+            <input v-model.number="categoryForm.order" type="number" class="form-input" />
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Сохранить</button>
+            <button type="button" @click="closeCategoryModal" class="btn-secondary">Отмена</button>
+          </div>
         </form>
       </div>
     </div>
 
-    <!-- Модальное окно: Ответ пользователю -->
+    <!-- Модальное окно для темы (исправленное) -->
+    <div v-if="showTopicModal" class="modal-overlay" @click.self="closeTopicModal">
+      <div class="modal-card wide">
+        <h3>{{ editingTopic ? 'Редактировать тему' : 'Создать тему' }}</h3>
+        <form @submit.prevent="saveTopic">
+          <div class="form-group">
+            <label>Категория *</label>
+            <select v-model="topicForm.category_id" class="form-select" required>
+              <option value="">Выберите категорию</option>
+              <option v-for="cat in forumCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Заголовок *</label>
+            <input v-model="topicForm.title" type="text" required class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Содержание *</label>
+            <textarea v-model="topicForm.content" rows="6" required class="form-textarea"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">Сохранить</button>
+            <button type="button" @click="closeTopicModal" class="btn-secondary">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно просмотра рецензии -->
+    <div v-if="showReviewDetailModal" class="modal-overlay" @click.self="closeReviewDetailModal">
+      <div class="modal-content wide">
+        <div class="modal-header">
+          <h3>Рецензия на "{{ selectedReview?.mangaTitle }}"</h3>
+          <button @click="closeReviewDetailModal" class="close-modal">&times;</button>
+        </div>
+        <div class="review-detail">
+          <div class="review-detail-header">
+            <div class="review-detail-author">
+              <span class="author-name">{{ selectedReview?.userName }}</span>
+              <span class="review-date">{{ formatDate(selectedReview?.createdAt) }}</span>
+            </div>
+            <div class="review-detail-rating">
+              <span v-for="i in 10" :key="i" class="star-detail" :class="{ active: i <= (selectedReview?.rating || 0) }">★</span>
+              <span class="rating-number">{{ selectedReview?.rating }}/10</span>
+            </div>
+          </div>
+          <div class="review-detail-content">
+            <p>{{ selectedReview?.content }}</p>
+          </div>
+          <div class="review-detail-actions">
+            <button @click="approveReview(selectedReview?.id)" class="btn-sm approve">✅ Одобрить</button>
+            <button @click="rejectReview(selectedReview?.id)" class="btn-sm reject">❌ Отклонить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showReplyModal" class="modal-overlay" @click.self="closeReplyModal">
       <div class="modal-card">
         <h3>📧 Ответ пользователю {{ replyFeedback?.email }}</h3>
@@ -440,7 +543,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI, mangaAPI, chaptersAPI, getCoverUrl } from '@/api'
 
@@ -458,6 +561,25 @@ const forumPosts = ref([])
 const feedbacks = ref([])
 const stats = reactive({ users: 0, manga: 0, totalViews: 0 })
 
+// Переменные для форума в админ-панели
+const forumCategories = ref([])
+const forumTopicsList = ref([])
+const forumPostsList = ref([])
+const postsStoreData = ref({})
+const showTopicModal = ref(false)
+const editingTopic = ref(null)
+
+// Переменные для рецензий
+const pendingReviews = ref([])
+const showReviewDetailModal = ref(false)
+const selectedReview = ref(null)
+
+const topicForm = reactive({
+  category_id: '',
+  title: '',
+  content: ''
+})
+
 const realPagesCount = ref({})
 const loadingPages = ref({})
 
@@ -467,40 +589,25 @@ const filteredChapters = computed(() => {
 })
 
 const checkRealPages = async (chapterId) => {
-  if (realPagesCount.value[chapterId] !== undefined && realPagesCount.value[chapterId] !== null) {
-    return
-  }
-  
+  if (realPagesCount.value[chapterId] !== undefined && realPagesCount.value[chapterId] !== null) return
   loadingPages.value[chapterId] = true
   try {
     const pagesData = await chaptersAPI.getPages(chapterId)
     const pagesCount = (pagesData.pages || []).length
     realPagesCount.value[chapterId] = pagesCount
-    
     if (pagesCount === 0) {
       const chapter = chapters.value.find(c => c.id == chapterId)
-      if (chapter && chapter.pages_count) {
-        realPagesCount.value[chapterId] = chapter.pages_count
-      }
+      if (chapter && chapter.pages_count) realPagesCount.value[chapterId] = chapter.pages_count
     }
   } catch (err) {
-    console.warn(`Не удалось получить страницы для главы ${chapterId}:`, err.message)
     const chapter = chapters.value.find(c => c.id == chapterId)
-    if (chapter && chapter.pages_count) {
-      realPagesCount.value[chapterId] = chapter.pages_count
-    } else {
-      realPagesCount.value[chapterId] = 0
-    }
+    realPagesCount.value[chapterId] = (chapter && chapter.pages_count) ? chapter.pages_count : 0
   } finally {
     loadingPages.value[chapterId] = false
   }
 }
 
-const loadAllRealPages = async () => {
-  for (const ch of chapters.value) {
-    await checkRealPages(ch.id)
-  }
-}
+const loadAllRealPages = async () => { for (const ch of chapters.value) await checkRealPages(ch.id) }
 
 const getStatusText = (status) => ({ ongoing: 'Онгоинг', completed: 'Завершена', hiatus: 'Перерыв', cancelled: 'Отменена' }[status] || status)
 const getFeedbackStatus = (status) => ({ new: 'Новое', read: 'Прочитано', replied: 'Отвечено' }[status] || status)
@@ -514,10 +621,7 @@ const handleExcelFileSelect = (event) => { excelFileName.value = event.target.fi
 const showMangaModal = ref(false)
 const editingManga = ref(null)
 const coverInput = ref(null)
-const mangaForm = reactive({
-  title: '', alternative_titles_str: '', description: '', cover_image: '',
-  author: '', artist: '', status: 'ongoing', year: new Date().getFullYear(), genres_str: ''
-})
+const mangaForm = reactive({ title: '', alternative_titles_str: '', description: '', cover_image: '', author: '', artist: '', status: 'ongoing', year: new Date().getFullYear(), genres_str: '' })
 
 const showChapterModal = ref(false)
 const editingChapter = ref(null)
@@ -525,7 +629,7 @@ const chapterForm = reactive({ manga_id: '', chapter_number: null, title: '' })
 
 const showCategoryModal = ref(false)
 const editingCategory = ref(null)
-const categoryForm = reactive({ name: '', slug: '', description: '', icon: '📚', order: 1 })
+const categoryForm = reactive({ name: '', slug: '', description: '', icon: '📚', order: 0 })
 
 const showReplyModal = ref(false)
 const replyFeedback = ref(null)
@@ -547,64 +651,207 @@ const syncResult = ref(null)
 
 const canUpload = computed(() => uploadForm.mangaId && uploadForm.chapterNumber && selectedFileName.value)
 
-const loadManga = async () => { 
-  try { 
-    const data = await mangaAPI.list({ limit: 100 }); 
-    mangaList.value = data.manga || data 
-  } catch(e) { console.error(e) } 
+const loadManga = async () => { try { const data = await mangaAPI.list({ limit: 100 }); mangaList.value = data.manga || data } catch(e) { console.error(e) } }
+const loadUsers = async () => { try { users.value = await adminAPI.getUsers() } catch (e) { console.error(e) } }
+const loadChapters = async () => { try { const params = {}; if (chapterFilterId.value) params.mangaId = chapterFilterId.value; const data = await chaptersAPI.list(params); chapters.value = data.chapters || data || []; realPagesCount.value = {}; setTimeout(() => loadAllRealPages(), 300) } catch (e) { console.error(e); chapters.value = [] } }
+const loadFeedbacks = async () => { try { feedbacks.value = await adminAPI.getFeedback() } catch (e) { console.error(e) } }
+const loadStats = async () => { try { Object.assign(stats, await adminAPI.getStats()) } catch (e) { console.error(e) } }
+
+// ========== ФУНКЦИИ ДЛЯ ФОРУМА ==========
+
+const loadForumDataFromStorage = () => {
+  loadCategories()
+  const savedTopics = localStorage.getItem('forum_topics')
+  if (savedTopics) {
+    forumTopicsList.value = JSON.parse(savedTopics)
+    forumTopicsList.value.sort((a, b) => b.id - a.id)
+  } else { forumTopicsList.value = [] }
+  
+  const savedPosts = localStorage.getItem('forum_posts_store')
+  if (savedPosts) {
+    const postsData = JSON.parse(savedPosts)
+    postsStoreData.value = postsData
+    forumPostsList.value = []
+    Object.keys(postsData).forEach(topicId => {
+      const posts = postsData[topicId] || []
+      posts.forEach(post => { forumPostsList.value.push({ ...post, topicId: parseInt(topicId) }) })
+    })
+    forumPostsList.value.sort((a, b) => b.id - a.id)
+  } else { forumPostsList.value = [] }
 }
 
-const loadUsers = async () => { 
-  try { 
-    users.value = await adminAPI.getUsers() 
-  } catch (e) { console.error(e) } 
-}
+const getPostsCountForTopic = (topicId) => postsStoreData.value[topicId]?.length || 0
+const getTopicTitleById = (topicId) => { if (!topicId) return 'Неизвестно'; const topic = forumTopicsList.value.find(t => t.id === topicId); return topic?.title || 'Неизвестно' }
+const getCategoryNameById = (id) => { if (!id) return 'Без категории'; const cat = forumCategories.value.find(c => c.id == id); return cat ? cat.name : 'Без категории' }
 
-const loadChapters = async () => { 
-  try { 
-    const params = {}; 
-    if (chapterFilterId.value) params.mangaId = chapterFilterId.value
-    const data = await chaptersAPI.list(params)
-    chapters.value = data.chapters || data || []
-    realPagesCount.value = {}
-    setTimeout(() => loadAllRealPages(), 300)
-  } catch (e) { 
-    console.error(e)
-    chapters.value = []
-  } 
+const switchForumTab = (tab) => { 
+  forumSubtab.value = tab
+  if (tab === 'categories') loadCategories()
+  if (tab === 'topics') loadForumDataFromStorage()
+  if (tab === 'posts') loadForumDataFromStorage()
+  if (tab === 'reviews') loadPendingReviews()
 }
 
 const loadCategories = async () => { 
   try { 
-    categories.value = await adminAPI.getForumCategories() 
-  } catch (e) { console.error(e) } 
+    const data = await adminAPI.getForumCategories()
+    categories.value = data
+    forumCategories.value = data
+  } catch (e) { 
+    console.error(e)
+    forumCategories.value = []
+  } 
 }
 
-const loadForumTopics = async () => { 
-  try { 
-    const data = await adminAPI.getForumTopics({ limit: 100 }); 
-    forumTopics.value = data.topics || [] 
-  } catch (e) { console.error(e) } 
+// ========== ФУНКЦИИ ДЛЯ РЕЦЕНЗИЙ ==========
+
+const loadPendingReviews = () => {
+  const saved = localStorage.getItem('pending_reviews')
+  if (saved) {
+    pendingReviews.value = JSON.parse(saved)
+  } else {
+    pendingReviews.value = []
+  }
 }
 
-const loadForumPosts = async () => { 
-  try { 
-    const data = await adminAPI.getForumPosts({ limit: 100 }); 
-    forumPosts.value = data.posts || [] 
-  } catch (e) { console.error(e) } 
+const openReviewDetailModal = (review) => {
+  selectedReview.value = review
+  showReviewDetailModal.value = true
 }
 
-const loadFeedbacks = async () => { 
-  try { 
-    feedbacks.value = await adminAPI.getFeedback() 
-  } catch (e) { console.error(e) } 
+const closeReviewDetailModal = () => {
+  showReviewDetailModal.value = false
+  selectedReview.value = null
 }
 
-const loadStats = async () => { 
-  try { 
-    Object.assign(stats, await adminAPI.getStats()) 
-  } catch (e) { console.error(e) } 
+const approveReview = (reviewId) => {
+  const review = pendingReviews.value.find(r => r.id === reviewId)
+  if (!review) return
+  
+  pendingReviews.value = pendingReviews.value.filter(r => r.id !== reviewId)
+  localStorage.setItem('pending_reviews', JSON.stringify(pendingReviews.value))
+  
+  const approved = JSON.parse(localStorage.getItem('approved_reviews') || '[]')
+  approved.push({ ...review, status: 'approved', approvedAt: new Date().toISOString() })
+  localStorage.setItem('approved_reviews', JSON.stringify(approved))
+  
+  closeReviewDetailModal()
+  alert('Рецензия одобрена и опубликована на странице манги')
 }
+
+const rejectReview = (reviewId) => {
+  if (!confirm('Удалить рецензию?')) return
+  pendingReviews.value = pendingReviews.value.filter(r => r.id !== reviewId)
+  localStorage.setItem('pending_reviews', JSON.stringify(pendingReviews.value))
+  closeReviewDetailModal()
+  alert('Рецензия удалена')
+}
+
+// ========== КАТЕГОРИИ ==========
+
+const openCategoryModal = (cat = null) => {
+  editingCategory.value = cat
+  if (cat) {
+    categoryForm.name = cat.name || ''
+    categoryForm.slug = cat.slug || ''
+    categoryForm.description = cat.description || ''
+    categoryForm.icon = cat.icon || '📚'
+    categoryForm.order = cat.order || 0
+  } else {
+    categoryForm.name = ''; categoryForm.slug = ''; categoryForm.description = ''; categoryForm.icon = '📚'; categoryForm.order = 0
+  }
+  showCategoryModal.value = true
+}
+
+const closeCategoryModal = () => { showCategoryModal.value = false; editingCategory.value = null }
+
+const saveCategory = async () => {
+  try {
+    if (!categoryForm.name.trim()) { alert('Введите название категории'); return }
+    if (!categoryForm.slug.trim()) { categoryForm.slug = categoryForm.name.toLowerCase().replace(/[^a-zа-яё0-9]+/g, '-') }
+    const data = { name: categoryForm.name, slug: categoryForm.slug, description: categoryForm.description, icon: categoryForm.icon, order: categoryForm.order }
+    if (editingCategory.value) await adminAPI.updateForumCategory(editingCategory.value.id, data)
+    else await adminAPI.createForumCategory(data)
+    closeCategoryModal()
+    await loadCategories()
+  } catch (error) { console.error('Ошибка сохранения категории:', error); alert('Ошибка: ' + (error.message || 'Не удалось сохранить категорию')) }
+}
+
+const deleteCategoryItem = async (id) => {
+  if (!confirm('Удалить категорию?')) return
+  try { await adminAPI.deleteForumCategory(id); await loadCategories() } 
+  catch (error) { console.error('Ошибка удаления категории:', error); alert('Ошибка: ' + (error.message || 'Не удалось удалить категорию')) }
+}
+
+// ========== ТЕМЫ ==========
+
+const openTopicModal = (topic = null) => {
+  editingTopic.value = topic
+  if (topic) {
+    topicForm.category_id = topic.category_id || ''
+    topicForm.title = topic.title || ''
+    topicForm.content = topic.content || ''
+  } else {
+    topicForm.category_id = ''; topicForm.title = ''; topicForm.content = ''
+  }
+  showTopicModal.value = true
+}
+
+const closeTopicModal = () => { showTopicModal.value = false; editingTopic.value = null }
+
+const saveTopic = async () => {
+  try {
+    if (!topicForm.title.trim()) { alert('Введите заголовок темы'); return }
+    if (!topicForm.content.trim()) { alert('Введите содержание темы'); return }
+    
+    const currentUser = authStore.user?.username || 'Админ'
+    const newTopicId = Date.now()
+    const newTopicData = { id: newTopicId, category_id: topicForm.category_id || null, title: topicForm.title, author: { username: currentUser }, created_at: new Date().toISOString(), views: 0 }
+    
+    const existingTopics = JSON.parse(localStorage.getItem('forum_topics') || '[]')
+    existingTopics.unshift(newTopicData)
+    localStorage.setItem('forum_topics', JSON.stringify(existingTopics))
+    
+    const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}')
+    postsStore[newTopicId] = [{ id: newTopicId + 1, author: { username: currentUser }, content: topicForm.content, created_at: new Date().toISOString(), likes: 0, is_liked: false }]
+    localStorage.setItem('forum_posts_store', JSON.stringify(postsStore))
+    
+    closeTopicModal()
+    loadForumDataFromStorage()
+    window.dispatchEvent(new CustomEvent('forumDataUpdated'))
+    alert('Тема успешно создана!')
+  } catch (error) { console.error('Ошибка сохранения темы:', error); alert('Ошибка: ' + (error.message || 'Не удалось сохранить тему')) }
+}
+
+const deleteTopicItem = async (id) => {
+  if (!confirm('Удалить тему? Все посты в теме также будут удалены.')) return
+  const existingTopics = JSON.parse(localStorage.getItem('forum_topics') || '[]')
+  const updatedTopics = existingTopics.filter(t => t.id !== id)
+  localStorage.setItem('forum_topics', JSON.stringify(updatedTopics))
+  const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}')
+  delete postsStore[id]
+  localStorage.setItem('forum_posts_store', JSON.stringify(postsStore))
+  loadForumDataFromStorage()
+  window.dispatchEvent(new CustomEvent('forumDataUpdated'))
+  alert('Тема удалена')
+}
+
+// ========== ПОСТЫ ==========
+
+const deletePostItem = async (id) => {
+  if (!confirm('Удалить пост?')) return
+  const postsStore = JSON.parse(localStorage.getItem('forum_posts_store') || '{}')
+  for (const [topicId, posts] of Object.entries(postsStore)) {
+    const postIndex = posts.findIndex(p => p.id === id)
+    if (postIndex !== -1) { posts.splice(postIndex, 1); postsStore[topicId] = posts; break }
+  }
+  localStorage.setItem('forum_posts_store', JSON.stringify(postsStore))
+  loadForumDataFromStorage()
+  window.dispatchEvent(new CustomEvent('forumDataUpdated'))
+  alert('Пост удален')
+}
+
+// ========== МАНГА ==========
 
 const openMangaModal = (manga = null) => {
   editingManga.value = manga
@@ -625,10 +872,7 @@ const openMangaModal = (manga = null) => {
   showMangaModal.value = true
 }
 
-const closeMangaModal = () => { 
-  showMangaModal.value = false; 
-  editingManga.value = null 
-}
+const closeMangaModal = () => { showMangaModal.value = false; editingManga.value = null }
 
 const uploadCover = async (event) => {
   const file = event.target.files[0]
@@ -636,11 +880,7 @@ const uploadCover = async (event) => {
   const formData = new FormData()
   formData.append('cover', file)
   try {
-    const res = await fetch('/api/admin/upload-cover', { 
-      method: 'POST', 
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, 
-      body: formData 
-    })
+    const res = await fetch('/api/admin/upload-cover', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: formData })
     const data = await res.json()
     if (res.ok) mangaForm.cover_image = data.coverUrl
     else alert('Ошибка загрузки: ' + data.message)
@@ -649,17 +889,7 @@ const uploadCover = async (event) => {
 
 const saveManga = async () => {
   try {
-    const data = {
-      title: mangaForm.title,
-      alternative_titles: mangaForm.alternative_titles_str.split(',').map(s => s.trim()).filter(s => s),
-      description: mangaForm.description,
-      cover_image: mangaForm.cover_image,
-      author: mangaForm.author,
-      artist: mangaForm.artist,
-      status: mangaForm.status,
-      year: mangaForm.year,
-      genres: mangaForm.genres_str.split(',').map(g => g.trim()).filter(g => g)
-    }
+    const data = { title: mangaForm.title, alternative_titles: mangaForm.alternative_titles_str.split(',').map(s => s.trim()).filter(s => s), description: mangaForm.description, cover_image: mangaForm.cover_image, author: mangaForm.author, artist: mangaForm.artist, status: mangaForm.status, year: mangaForm.year, genres: mangaForm.genres_str.split(',').map(g => g.trim()).filter(g => g) }
     if (editingManga.value) await adminAPI.updateManga(editingManga.value.id, data)
     else await adminAPI.createManga(data)
     closeMangaModal()
@@ -667,154 +897,41 @@ const saveManga = async () => {
   } catch (err) { alert('Ошибка: ' + err.message) }
 }
 
-const deleteManga = async (id) => { 
-  if (confirm('Удалить мангу?')) { 
-    await adminAPI.deleteManga(id); 
-    await loadManga() 
-  } 
-}
+const deleteManga = async (id) => { if (confirm('Удалить мангу?')) { await adminAPI.deleteManga(id); await loadManga() } }
 
 const openChapterModal = (ch = null) => {
   editingChapter.value = ch
-  if (ch) {
-    chapterForm.manga_id = ch.manga_id
-    chapterForm.chapter_number = ch.chapter_number
-    chapterForm.title = ch.title || ''
-  } else {
-    chapterForm.manga_id = ''
-    chapterForm.chapter_number = null
-    chapterForm.title = ''
-  }
+  if (ch) { chapterForm.manga_id = ch.manga_id; chapterForm.chapter_number = ch.chapter_number; chapterForm.title = ch.title || '' }
+  else { chapterForm.manga_id = ''; chapterForm.chapter_number = null; chapterForm.title = '' }
   showChapterModal.value = true
 }
 
-const closeChapterModal = () => { 
-  showChapterModal.value = false 
-}
+const closeChapterModal = () => { showChapterModal.value = false }
 
 const saveChapter = async () => {
-  if (!chapterForm.manga_id) {
-    alert('Выберите мангу')
-    return
-  }
-  if (!chapterForm.chapter_number || chapterForm.chapter_number <= 0) {
-    alert('Введите корректный номер главы')
-    return
-  }
-  
+  if (!chapterForm.manga_id) { alert('Выберите мангу'); return }
+  if (!chapterForm.chapter_number || chapterForm.chapter_number <= 0) { alert('Введите корректный номер главы'); return }
   if (!editingChapter.value) {
-    const existing = chapters.value.find(ch => 
-      ch.manga_id == chapterForm.manga_id && 
-      ch.chapter_number == chapterForm.chapter_number
-    )
-    if (existing) {
-      alert(`Глава ${chapterForm.chapter_number} уже существует в этой манге!`)
-      return
-    }
+    const existing = chapters.value.find(ch => ch.manga_id == chapterForm.manga_id && ch.chapter_number == chapterForm.chapter_number)
+    if (existing) { alert(`Глава ${chapterForm.chapter_number} уже существует в этой манге!`); return }
   }
-  
   try {
-    const data = {
-      manga_id: chapterForm.manga_id,
-      chapter_number: chapterForm.chapter_number,
-      title: chapterForm.title || `Глава ${chapterForm.chapter_number}`
-    }
-    if (editingChapter.value) {
-      await chaptersAPI.update(editingChapter.value.id, data)
-    } else {
-      await chaptersAPI.create(data)
-    }
+    const data = { manga_id: chapterForm.manga_id, chapter_number: chapterForm.chapter_number, title: chapterForm.title || `Глава ${chapterForm.chapter_number}` }
+    if (editingChapter.value) await chaptersAPI.update(editingChapter.value.id, data)
+    else await chaptersAPI.create(data)
     closeChapterModal()
     await loadChapters()
     await loadManga()
-  } catch (e) { 
-    alert('Ошибка: ' + e.message)
-  }
-}
-
-const deleteChapter = async (id) => { 
-  if (confirm('Удалить главу?')) { 
-    await chaptersAPI.delete(id); 
-    loadChapters(); 
-    loadManga() 
-  } 
-}
-
-const updateRole = async (user) => { 
-  try { 
-    await adminAPI.updateUserRole(user.id, user.role) 
-  } catch(e) { console.error(e) } 
-}
-
-const deleteUser = async (id) => { 
-  if (confirm('Удалить пользователя?')) { 
-    await adminAPI.deleteUser(id); 
-    loadUsers() 
-  } 
-}
-
-const openCategoryModal = (cat = null) => {
-  editingCategory.value = cat
-  if (cat) {
-    categoryForm.name = cat.name
-    categoryForm.slug = cat.slug
-    categoryForm.description = cat.description || ''
-    categoryForm.icon = cat.icon || '📚'
-    categoryForm.order = cat.order || 1
-  } else {
-    categoryForm.name = ''
-    categoryForm.slug = ''
-    categoryForm.description = ''
-    categoryForm.icon = '📚'
-    categoryForm.order = 1
-  }
-  showCategoryModal.value = true
-}
-
-const closeCategoryModal = () => { 
-  showCategoryModal.value = false 
-}
-
-const saveCategory = async () => {
-  try {
-    if (editingCategory.value) await adminAPI.updateForumCategory(editingCategory.value.id, categoryForm)
-    else await adminAPI.createForumCategory(categoryForm)
-    closeCategoryModal()
-    loadCategories()
   } catch (e) { alert('Ошибка: ' + e.message) }
 }
 
-const deleteCategory = async (id) => { 
-  if (confirm('Удалить категорию?')) { 
-    await adminAPI.deleteForumCategory(id); 
-    loadCategories() 
-  } 
-}
+const deleteChapter = async (id) => { if (confirm('Удалить главу?')) { await chaptersAPI.delete(id); loadChapters(); loadManga() } }
 
-const deleteTopic = async (id) => { 
-  if (confirm('Удалить тему?')) { 
-    await adminAPI.deleteForumTopic(id); 
-    loadForumTopics() 
-  } 
-}
+const updateRole = async (user) => { try { await adminAPI.updateUserRole(user.id, user.role) } catch(e) { console.error(e) } }
+const deleteUser = async (id) => { if (confirm('Удалить пользователя?')) { await adminAPI.deleteUser(id); loadUsers() } }
 
-const deletePost = async (id) => { 
-  if (confirm('Удалить пост?')) { 
-    await adminAPI.deleteForumPost(id); 
-    loadForumPosts() 
-  } 
-}
-
-const openFeedbackReply = (fb) => { 
-  replyFeedback.value = fb; 
-  replyText.value = ''; 
-  showReplyModal.value = true 
-}
-
-const closeReplyModal = () => { 
-  showReplyModal.value = false; 
-  replyFeedback.value = null 
-}
+const openFeedbackReply = (fb) => { replyFeedback.value = fb; replyText.value = ''; showReplyModal.value = true }
+const closeReplyModal = () => { showReplyModal.value = false; replyFeedback.value = null }
 
 const sendReply = async () => {
   if (!replyText.value.trim()) return
@@ -828,12 +945,7 @@ const sendReply = async () => {
   finally { replySending.value = false }
 }
 
-const deleteFeedback = async (id) => { 
-  if (confirm('Удалить сообщение?')) { 
-    await adminAPI.deleteFeedback(id); 
-    loadFeedbacks() 
-  } 
-}
+const deleteFeedback = async (id) => { if (confirm('Удалить сообщение?')) { await adminAPI.deleteFeedback(id); loadFeedbacks() } }
 
 const uploadChapterZip = async () => {
   const file = zipFileInput.value?.files?.[0]
@@ -843,16 +955,9 @@ const uploadChapterZip = async () => {
   uploadForm.submitting = true
   uploadForm.result = ''
   const formData = new FormData()
-  formData.append('mangaId', uploadForm.mangaId)
-  formData.append('chapterNumber', uploadForm.chapterNumber)
-  formData.append('title', uploadForm.title || `Глава ${uploadForm.chapterNumber}`)
-  formData.append('pages', file)
+  formData.append('mangaId', uploadForm.mangaId); formData.append('chapterNumber', uploadForm.chapterNumber); formData.append('title', uploadForm.title || `Глава ${uploadForm.chapterNumber}`); formData.append('pages', file)
   try {
-    const res = await fetch('/api/admin/upload-chapter', { 
-      method: 'POST', 
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, 
-      body: formData 
-    })
+    const res = await fetch('/api/admin/upload-chapter', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: formData })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)
     uploadForm.result = '✅ ' + data.message
@@ -871,11 +976,7 @@ const importMangaFromExcel = async () => {
   const formData = new FormData()
   formData.append('file', file)
   try {
-    const res = await fetch('/api/admin/import-manga', { 
-      method: 'POST', 
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, 
-      body: formData 
-    })
+    const res = await fetch('/api/admin/import-manga', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: formData })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)
     importMessage.value = '✅ ' + data.message
@@ -890,47 +991,35 @@ const syncPages = async () => {
   syncing.value = true
   syncResult.value = null
   try {
-    const res = await fetch('/api/admin/sync-pages', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
+    const res = await fetch('/api/admin/sync-pages', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
     const data = await res.json()
     syncResult.value = data
-    if (data.success) {
-      await loadChapters()
-      await loadManga()
-    }
-  } catch (err) {
-    syncResult.value = { success: false, message: 'Ошибка: ' + err.message }
-  } finally {
-    syncing.value = false
-  }
+    if (data.success) { await loadChapters(); await loadManga() }
+  } catch (err) { syncResult.value = { success: false, message: 'Ошибка: ' + err.message } }
+  finally { syncing.value = false }
 }
 
 const syncFull = async () => {
   syncingFull.value = true
   syncResult.value = null
   try {
-    const res = await fetch('/api/admin/sync', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
+    const res = await fetch('/api/admin/sync', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
     const data = await res.json()
     syncResult.value = data
-    if (data.success) {
-      await loadChapters()
-      await loadManga()
-    }
-  } catch (err) {
-    syncResult.value = { success: false, message: 'Ошибка: ' + err.message }
-  } finally {
-    syncingFull.value = false
-  }
+    if (data.success) { await loadChapters(); await loadManga() }
+  } catch (err) { syncResult.value = { success: false, message: 'Ошибка: ' + err.message } }
+  finally { syncingFull.value = false }
 }
 
 onMounted(() => {
-  loadManga(); loadUsers(); loadChapters(); loadCategories()
-  loadForumTopics(); loadForumPosts(); loadFeedbacks(); loadStats()
+  loadManga(); loadUsers(); loadChapters(); loadCategories(); loadForumDataFromStorage(); loadFeedbacks(); loadStats(); loadPendingReviews()
+  window.addEventListener('forumDataUpdated', loadForumDataFromStorage)
+  window.addEventListener('reviewsUpdated', loadPendingReviews)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('forumDataUpdated', loadForumDataFromStorage)
+  window.removeEventListener('reviewsUpdated', loadPendingReviews)
 })
 </script>
 
@@ -966,9 +1055,16 @@ onMounted(() => {
 .btn-secondary:hover { background: var(--color-secondary); color: white; }
 .btn-file { background: rgba(128, 131, 42, 0.2); border: 1px solid var(--color-secondary); color: var(--color-secondary); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
 .btn-file:hover { background: var(--color-secondary); color: white; }
-.btn-sm { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 6px; color: white; cursor: pointer; margin-right: 5px; transition: all 0.2s; }
+.btn-sm { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 6px; cursor: pointer; margin-right: 5px; transition: all 0.2s; }
 .btn-sm:hover { background: var(--color-primary); }
-.btn-sm.danger:hover { background: #dc3545; }
+.btn-sm.edit:hover { background: var(--color-primary); color: white; }
+.btn-sm.delete:hover { background: #dc3545; color: white; }
+.btn-sm.approve { color: #00cc44; }
+.btn-sm.approve:hover { background: #00cc44; color: white; }
+.btn-sm.reject { color: #ff4444; }
+.btn-sm.reject:hover { background: #ff4444; color: white; }
+.btn-sm.view { color: #9ea344; }
+.btn-sm.view:hover { background: #9ea344; color: white; }
 .btn-icon-small { background: rgba(128, 131, 42, 0.2); border: 1px solid var(--color-secondary); color: var(--color-secondary); padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; margin-left: 6px; }
 .btn-icon-small:hover { background: var(--color-secondary); color: white; }
 .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
@@ -1026,63 +1122,88 @@ onMounted(() => {
 .no-pages { color: #ff4444; background: rgba(255, 68, 68, 0.1); padding: 2px 8px; border-radius: 12px; }
 .loading-small { font-size: 0.8rem; animation: pulse 1s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-@media (max-width: 1024px) { .admin-layout { grid-template-columns: 220px 1fr; gap: 15px; padding: 15px; } }
-@media (max-width: 768px) { .admin-layout { grid-template-columns: 1fr; } .sidebar { position: static; } .sidebar nav { flex-direction: row; flex-wrap: wrap; } .sidebar button { width: auto; } .form-row { grid-template-columns: 1fr; } .header-row { flex-direction: column; align-items: flex-start; } .table th, .table td { padding: 8px; font-size: 0.85rem; } .stats-grid { grid-template-columns: 1fr; } .file-upload-area { flex-direction: column; align-items: flex-start; } .file-name { max-width: 100%; } }
-@media (max-width: 480px) { .content { padding: 15px; } .modal-card { padding: 20px; } .btn-sm { margin-bottom: 5px; } .table th, .table td { padding: 6px; font-size: 0.75rem; } .sidebar button { padding: 8px 12px; font-size: 0.85rem; } }
-/* Исправление: число страниц и кнопки в одну строку */
-.pages-count {
-  white-space: nowrap;
+
+/* Стили для админ-панели форума */
+.forum-admin-tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(128, 131, 42, 0.3); padding-bottom: 10px; flex-wrap: wrap; }
+.forum-tab-btn { background: transparent; border: none; padding: 8px 20px; font-size: 0.95rem; cursor: pointer; color: var(--color-text-muted, #aaa); border-radius: 20px; transition: all 0.2s; }
+.forum-tab-btn:hover { background: rgba(128, 131, 42, 0.2); color: var(--color-secondary, #9ea344); }
+.forum-tab-btn.active { background: var(--color-primary, #07660c); color: white; }
+.forum-admin-section { background: var(--color-panel, #1a1a1a); border-radius: 12px; padding: 20px; border: 1px solid rgba(128, 131, 42, 0.2); margin-top: 5px; }
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+.section-header h3 { font-size: 1.2rem; color: var(--color-secondary, #9ea344); margin: 0; font-weight: 600; }
+.section-header .btn-primary { background: var(--color-primary, #07660c); color: white; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; }
+.section-header .btn-primary:hover { background: var(--color-primary-hover, #0a8a10); transform: translateY(-1px); }
+
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); vertical-align: middle; }
+.admin-table th { background: rgba(7, 102, 12, 0.15); color: var(--color-secondary, #9ea344); font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+.admin-table td { font-size: 0.85rem; color: var(--color-text, #ffffff); }
+.admin-table tr:hover td { background: rgba(255, 255, 255, 0.03); }
+
+.admin-table .actions { white-space: nowrap; text-align: center; width: 80px; }
+.admin-table .btn-sm { padding: 5px 10px; margin: 0 3px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+.admin-table .btn-sm.edit { color: var(--color-secondary, #9ea344); }
+.admin-table .btn-sm.edit:hover { background: var(--color-primary, #07660c); color: white; }
+.admin-table .btn-sm.delete { color: #ff8888; }
+.admin-table .btn-sm.delete:hover { background: #dc3545; color: white; }
+.admin-table .btn-sm.approve { color: #00cc44; }
+.admin-table .btn-sm.approve:hover { background: #00cc44; color: white; }
+.admin-table .btn-sm.reject { color: #ff4444; }
+.admin-table .btn-sm.reject:hover { background: #ff4444; color: white; }
+.admin-table .btn-sm.view { color: #9ea344; }
+.admin-table .btn-sm.view:hover { background: #9ea344; color: white; }
+
+.review-preview { max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
+.review-content { white-space: nowrap; }
+
+/* Модальное окно просмотра рецензии */
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.modal-header h3 { color: var(--color-primary, #07660c); margin: 0; font-size: 1.3rem; }
+.close-modal { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--color-text-muted, #aaa); padding: 0; line-height: 1; }
+.close-modal:hover { color: #ff4444; }
+
+.review-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.review-detail-author { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+.review-detail-author .author-name { font-weight: 600; color: #07660c; font-size: 1rem; }
+.review-detail-author .review-date { font-size: 0.75rem; color: #aaa; }
+.review-detail-rating { display: flex; align-items: center; gap: 8px; }
+.star-detail { font-size: 1rem; color: #444; }
+.star-detail.active { color: #ffcc00; }
+.rating-number { font-size: 0.85rem; font-weight: 600; color: #9ea344; }
+.review-detail-content { background: #2a2a2a; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+.review-detail-content p { margin: 0; line-height: 1.8; white-space: pre-wrap; }
+.review-detail-actions { display: flex; justify-content: flex-end; gap: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+
+.post-content-preview { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-table { text-align: center; padding: 30px; color: var(--color-text-muted, #aaa); }
+
+@media (max-width: 900px) {
+  .section-header { flex-direction: column; align-items: flex-start; }
+  .admin-table th, .admin-table td { padding: 8px 6px; font-size: 0.75rem; }
+  .post-content-preview, .review-preview { max-width: 150px; }
+  .review-content { white-space: normal; }
+  .review-detail-header { flex-direction: column; align-items: flex-start; }
 }
 
-.real-pages {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
+@media (max-width: 768px) {
+  .forum-admin-tabs { gap: 5px; }
+  .forum-tab-btn { padding: 6px 14px; font-size: 0.85rem; }
+  .forum-admin-section { padding: 15px; }
+  .section-header h3 { font-size: 1rem; }
+  .section-header .btn-primary { padding: 6px 12px; font-size: 0.75rem; }
 }
 
-.has-pages-real,
-.no-pages {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
+@media (max-width: 480px) {
+  .post-content-preview, .review-preview { max-width: 100px; }
+  .admin-table th, .admin-table td { padding: 6px 4px; font-size: 0.7rem; }
+  .admin-table .btn-sm { padding: 3px 6px; font-size: 0.7rem; }
 }
 
-.btn-icon-small {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(128, 131, 42, 0.2);
-  border: 1px solid var(--color-secondary, #9ea344);
-  color: var(--color-secondary, #9ea344);
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
+.form-hint {
+  display: block;
+  margin-top: 5px;
   font-size: 0.7rem;
-  transition: all 0.2s;
-  margin-left: 4px;
-  white-space: nowrap;
-}
-
-.btn-icon-small:hover {
-  background: var(--color-secondary, #9ea344);
-  color: white;
-}
-
-.loading-small {
-  display: inline-block;
-  font-size: 0.8rem;
-  animation: pulse 1s infinite;
-  white-space: nowrap;
-}
-
-/* Для всей таблицы фиксируем, чтобы колонка не растягивалась */
-.table td.pages-count {
-  white-space: nowrap;
-  width: 1%;
+  color: var(--color-text-muted, #aaa);
 }
 </style>

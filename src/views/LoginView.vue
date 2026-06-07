@@ -19,7 +19,7 @@
               <div class="password-input-wrapper">
                 <input :type="showPassword ? 'text' : 'password'" id="password" v-model="formData.password" placeholder="Введите ваш пароль" required />
                 <button type="button" @click="showPassword = !showPassword" class="password-toggle">
-                  {{ showPassword ? '🙈' : '👁️' }}
+                  {{ showPassword ? '' : '️' }}
                 </button>
               </div>
             </div>
@@ -31,7 +31,7 @@
               {{ isLoading ? 'Вход...' : 'Войти' }}
             </button>
 
-            <div v-if="authStore.error" class="error-message">❌ {{ authStore.error }}</div>
+            <div v-if="authStore.error" class="error-message"> {{ authStore.error }}</div>
           </form>
           <div class="auth-links">
             <p>Нет аккаунта? <router-link to="/register">Зарегистрироваться</router-link></p>

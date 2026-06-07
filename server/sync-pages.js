@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 const CHAPTERS_DIR = path.join(__dirname, '../public/chapters');
 
 async function syncPages() {
-  console.log('🔄 Начинаю синхронизацию страниц...');
+  console.log(' Начинаю синхронизацию страниц...');
   
   const chapters = await prisma.chapter.findMany();
   let updatedChapters = 0;
@@ -57,19 +57,19 @@ async function syncPages() {
         
         updatedChapters++;
         totalPagesCreated += files.length;
-        console.log(`✅ Глава ${chapterNum} манги ${mangaId}: ${files.length} страниц`);
+        console.log(` Глава ${chapterNum} манги ${mangaId}: ${files.length} страниц`);
       }
     }
   }
   
-  console.log(`\n🎉 Синхронизация завершена!`);
-  console.log(`📊 Обновлено глав: ${updatedChapters}`);
-  console.log(`📄 Создано страниц: ${totalPagesCreated}`);
+  console.log(`\n Синхронизация завершена!`);
+  console.log(` Обновлено глав: ${updatedChapters}`);
+  console.log(` Создано страниц: ${totalPagesCreated}`);
   
   await prisma.$disconnect();
 }
 
 syncPages().catch(e => {
-  console.error('❌ Ошибка:', e);
+  console.error(' Ошибка:', e);
   prisma.$disconnect();
 });

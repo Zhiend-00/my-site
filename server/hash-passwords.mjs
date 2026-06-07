@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function hashExistingPasswords() {
-  console.log('🔄 Проверяем пароли пользователей...');
+  console.log(' Проверяем пароли пользователей...');
   const users = await prisma.user.findMany();
   let updated = 0;
 
@@ -16,19 +16,19 @@ async function hashExistingPasswords() {
         where: { id: user.id },
         data: { password: hashed },
       });
-      console.log(`✅ Обновлён пароль для ${user.email} (был "${user.password}")`);
+      console.log(` Обновлён пароль для ${user.email} (был "${user.password}")`);
       updated++;
     } else {
-      console.log(`⏩ Пропущен ${user.email} (уже хеширован)`);
+      console.log(` Пропущен ${user.email} (уже хеширован)`);
     }
   }
 
-  console.log(`🎉 Готово! Обновлено пользователей: ${updated}`);
+  console.log(` Готово! Обновлено пользователей: ${updated}`);
   await prisma.$disconnect();
 }
 
 hashExistingPasswords().catch(e => {
-  console.error('❌ Ошибка:', e);
+  console.error(' Ошибка:', e);
   prisma.$disconnect();
   process.exit(1);
 });

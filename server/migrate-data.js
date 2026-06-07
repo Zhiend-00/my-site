@@ -12,11 +12,11 @@ const __dirname = path.dirname(__filename);
 const prisma = new PrismaClient();
 
 async function migrate() {
-  console.log('🔄 Начинаем миграцию данных из db.json...');
+  console.log(' Начинаем миграцию данных из db.json...');
   
   const dbPath = path.join(__dirname, 'db.json');
   if (!fs.existsSync(dbPath)) {
-    console.error('❌ db.json не найден!');
+    console.error(' db.json не найден!');
     return;
   }
 
@@ -39,7 +39,7 @@ async function migrate() {
         },
       });
     }
-    console.log(`✅ Перенесено пользователей: ${db.users.length}`);
+    console.log(` Перенесено пользователей: ${db.users.length}`);
   }
 
   // 2. Манга
@@ -66,7 +66,7 @@ async function migrate() {
         },
       });
     }
-    console.log(`✅ Перенесено манги: ${db.manga.length}`);
+    console.log(` Перенесено манги: ${db.manga.length}`);
   }
 
   // 3. Главы
@@ -86,7 +86,7 @@ async function migrate() {
         },
       });
     }
-    console.log(`✅ Перенесено глав: ${db.chapters.length}`);
+    console.log(` Перенесено глав: ${db.chapters.length}`);
   }
 
   // 4. Прогресс чтения
@@ -99,7 +99,7 @@ async function migrate() {
         const chapterExists = await prisma.chapter.findUnique({ where: { id: prog.chapter_id } });
 
         if (!userExists || !mangaExists || !chapterExists) {
-          console.warn(`⚠️ Пропущен прогресс: пользователь=${prog.userId}, манга=${prog.manga_id}, глава=${prog.chapter_id}`);
+          console.warn(`️ Пропущен прогресс: пользователь=${prog.userId}, манга=${prog.manga_id}, глава=${prog.chapter_id}`);
           continue;
         }
 
@@ -118,10 +118,10 @@ async function migrate() {
         });
         imported++;
       } catch (e) {
-        console.warn(`⚠️ Ошибка при импорте прогресса: ${e.message}`);
+        console.warn(`️ Ошибка при импорте прогресса: ${e.message}`);
       }
     }
-    console.log(`✅ Перенесено прогресса: ${imported} из ${db.reading_progress.length}`);
+    console.log(` Перенесено прогресса: ${imported} из ${db.reading_progress.length}`);
   }
 
   // 5. Статусы манги
@@ -133,7 +133,7 @@ async function migrate() {
         const mangaExists = await prisma.manga.findUnique({ where: { id: BigInt(st.mangaId) } });
 
         if (!userExists || !mangaExists) {
-          console.warn(`⚠️ Пропущен статус: пользователь=${st.userId}, манга=${st.mangaId}`);
+          console.warn(`️ Пропущен статус: пользователь=${st.userId}, манга=${st.mangaId}`);
           continue;
         }
 
@@ -150,10 +150,10 @@ async function migrate() {
         });
         imported++;
       } catch (e) {
-        console.warn(`⚠️ Ошибка при импорте статуса: ${e.message}`);
+        console.warn(`️ Ошибка при импорте статуса: ${e.message}`);
       }
     }
-    console.log(`✅ Перенесено статусов: ${imported} из ${db.userMangaStatus.length}`);
+    console.log(` Перенесено статусов: ${imported} из ${db.userMangaStatus.length}`);
   }
 
   // 6. Категории форума
@@ -174,7 +174,7 @@ async function migrate() {
         },
       });
     }
-    console.log(`✅ Перенесено категорий форума: ${db.forum_categories.length}`);
+    console.log(` Перенесено категорий форума: ${db.forum_categories.length}`);
   }
 
   // 7. Темы форума (с проверками)
@@ -184,7 +184,7 @@ async function migrate() {
       try {
         // Проверяем наличие обязательных полей
         if (!topic.id || !topic.category_id || !topic.author_id) {
-          console.warn(`⚠️ Пропущена тема: отсутствуют id, category_id или author_id (id=${topic.id})`);
+          console.warn(`️ Пропущена тема: отсутствуют id, category_id или author_id (id=${topic.id})`);
           continue;
         }
 
@@ -193,7 +193,7 @@ async function migrate() {
         const authorExists = await prisma.user.findUnique({ where: { id: BigInt(topic.author_id) } });
 
         if (!categoryExists || !authorExists) {
-          console.warn(`⚠️ Пропущена тема id=${topic.id}: категория=${topic.category_id}, автор=${topic.author_id} не найдены`);
+          console.warn(`️ Пропущена тема id=${topic.id}: категория=${topic.category_id}, автор=${topic.author_id} не найдены`);
           continue;
         }
 
@@ -215,10 +215,10 @@ async function migrate() {
         });
         imported++;
       } catch (e) {
-        console.warn(`⚠️ Ошибка при импорте темы ${topic.id}: ${e.message}`);
+        console.warn(`️ Ошибка при импорте темы ${topic.id}: ${e.message}`);
       }
     }
-    console.log(`✅ Перенесено тем форума: ${imported} из ${db.forum_topics.length}`);
+    console.log(` Перенесено тем форума: ${imported} из ${db.forum_topics.length}`);
   }
 
   // 8. Посты форума (с проверками)
@@ -227,7 +227,7 @@ async function migrate() {
     for (const post of db.forum_posts) {
       try {
         if (!post.id || !post.topic_id || !post.author_id) {
-          console.warn(`⚠️ Пропущен пост: отсутствуют id, topic_id или author_id (id=${post.id})`);
+          console.warn(`️ Пропущен пост: отсутствуют id, topic_id или author_id (id=${post.id})`);
           continue;
         }
 
@@ -235,7 +235,7 @@ async function migrate() {
         const authorExists = await prisma.user.findUnique({ where: { id: BigInt(post.author_id) } });
 
         if (!topicExists || !authorExists) {
-          console.warn(`⚠️ Пропущен пост id=${post.id}: тема=${post.topic_id}, автор=${post.author_id} не найдены`);
+          console.warn(`️ Пропущен пост id=${post.id}: тема=${post.topic_id}, автор=${post.author_id} не найдены`);
           continue;
         }
 
@@ -253,13 +253,13 @@ async function migrate() {
         });
         imported++;
       } catch (e) {
-        console.warn(`⚠️ Ошибка при импорте поста ${post.id}: ${e.message}`);
+        console.warn(`️ Ошибка при импорте поста ${post.id}: ${e.message}`);
       }
     }
-    console.log(`✅ Перенесено постов форума: ${imported} из ${db.forum_posts.length}`);
+    console.log(` Перенесено постов форума: ${imported} из ${db.forum_posts.length}`);
   }
 
-  console.log('🎉 Миграция завершена!');
+  console.log(' Миграция завершена!');
 }
 
 migrate()

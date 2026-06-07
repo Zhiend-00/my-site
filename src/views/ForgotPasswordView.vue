@@ -26,12 +26,12 @@
         </form>
 
         <div v-if="successMsg" class="success-message">
-          <span class="success-icon">✉️</span>
+          <span class="success-icon">️</span>
           <p>{{ successMsg }}</p>
         </div>
 
         <div v-if="authStore.error" class="error-message">
-          ⚠️ {{ authStore.error }}
+          ️ {{ authStore.error }}
         </div>
 
         <div class="card-footer">

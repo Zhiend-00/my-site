@@ -6,8 +6,8 @@
       <input v-model="email" type="email" placeholder="Email" required />
       <textarea v-model="message" placeholder="Сообщение" rows="4" required></textarea>
       <button type="submit" :disabled="loading">Отправить</button>
-      <p v-if="success" class="success">✅ Сообщение отправлено</p>
-      <p v-if="error" class="error">❌ Ошибка</p>
+      <p v-if="success" class="success"> Сообщение отправлено</p>
+      <p v-if="error" class="error"> Ошибка</p>
     </form>
   </div>
 </template>

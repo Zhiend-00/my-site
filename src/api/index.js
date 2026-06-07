@@ -159,6 +159,21 @@ export const adminAPI = {
   getStats: () => request('/api/admin/stats'),
   // НОВЫЙ МЕТОД: получить количество страниц главы
   getChapterPagesCount: (chapterId) => request(`/api/admin/chapter-pages-count/${chapterId}`),
+createForumTopic: (data) => request('/api/forum_topics', { method: 'POST', body: JSON.stringify(data) }),
+  updateForumTopic: (id, data) => request(`/api/admin/forum/topics/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteForumTopic: (id) => request(`/api/admin/forum/topics/${id}`, { method: 'DELETE' }),
+  createForumCategory: (data) => request('/api/admin/forum/categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateForumCategory: (id, data) => request(`/api/admin/forum/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteForumCategory: (id) => request(`/api/admin/forum/categories/${id}`, { method: 'DELETE' }),
+  getForumTopics: (params) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/forum/topics${query ? `?${query}` : ''}`);
+  },
+  getForumPosts: (params) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/forum/posts${query ? `?${query}` : ''}`);
+  },
+  deleteForumPost: (id) => request(`/api/admin/forum/posts/${id}`, { method: 'DELETE' }),
 };
 
 export const getCoverUrl = (coverPath) => {

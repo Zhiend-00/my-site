@@ -17,17 +17,17 @@
     <!-- Статистика категории -->
     <div class="category-stats">
       <div class="stat-item">
-        <span class="stat-icon">💬</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ category.topics_count || 0 }}</span>
         <span class="stat-label">Тем</span>
       </div>
       <div class="stat-item">
-        <span class="stat-icon">📝</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ category.posts_count || 0 }}</span>
         <span class="stat-label">Сообщений</span>
       </div>
       <div class="stat-item">
-        <span class="stat-icon">👁</span>
+        <span class="stat-icon"></span>
         <span class="stat-value">{{ formatNumber(category.views_count || 0) }}</span>
         <span class="stat-label">Просмотров</span>
       </div>
@@ -46,10 +46,10 @@
         </router-link>
         <div class="activity-meta">
           <span class="author">
-            👤 {{ category.last_topic.author?.username || 'Аноним' }}
+             {{ category.last_topic.author?.username || 'Аноним' }}
           </span>
           <span class="time">
-            🕐 {{ formatTimeAgo(category.last_topic.created_at) }}
+             {{ formatTimeAgo(category.last_topic.created_at) }}
           </span>
         </div>
       </div>
@@ -86,17 +86,17 @@ defineEmits(['click'])
 // Методы
 const getCategoryIcon = (categoryName) => {
   const icons = {
-    'Манга': '📚',
-    'Аниме': '🎬',
-    'Новости': '📰',
-    'Обсуждения': '💬',
-    'Рекомендации': '⭐',
-    'Помощь': '❓',
-    'Технические вопросы': '🔧',
-    'Оффтоп': '🎭'
+    'Манга': '',
+    'Аниме': '',
+    'Новости': '',
+    'Обсуждения': '',
+    'Рекомендации': '',
+    'Помощь': '',
+    'Технические вопросы': '',
+    'Оффтоп': ''
   }
   
-  return icons[categoryName] || '📁'
+  return icons[categoryName] || ''
 }
 
 const truncateText = (text, maxLength) => {
