@@ -19,7 +19,7 @@
         <div class="suno-shimmer suno-shimmer--second"></div>
       </div>
 
-      <button class="slider-btn prev" @click="prevSlide">❮</i></button>
+      <button class="slider-btn prev" @click="prevSlide">❮</button>
       <button class="slider-btn next" @click="nextSlide">❯</button>
       <div class="dots">
         <span
