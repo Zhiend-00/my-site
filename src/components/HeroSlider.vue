@@ -41,17 +41,17 @@ const slides = ref([
   {
     title: 'Читайте мангу вместе с нами',
     description: 'Удобный интерфейс с сохранением прогресса, настройкой масштаба и яркости',
-    image: '/public/uploads/slider/slide1.jpg'
+    image: '/uploads/slider/slide1.jpg'
   },
   {
     title: 'Анонсы и новости по любимым мангам',
     description: 'Моментальные уведомления о новых главах и анонсирования новой манги',
-    image: '/public/uploads/slider/slide2.jpg'
+    image: '/uploads/slider/slide2.jpg'
   },
   {
     title: 'Участвуйте в обсуждениях на Форуме',
     description: 'Тематическое обсуждение вашей любимой манги',
-    image: '/public/uploads/slider/slide3.jpg'
+    image: '/uploads/slider/slide3.jpg'
   }
 ])
 
