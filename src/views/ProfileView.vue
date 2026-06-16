@@ -8,7 +8,7 @@
 
       <!-- Баннер о неподтверждённом email -->
       <div v-if="authStore.isLoggedIn && !authStore.user?.emailVerified" class="email-verify-banner">
-        <span>️ Ваш Email не подтверждён. Некоторые функции ограничены.</span>
+        <span>Ваш Email не подтверждён. Некоторые функции ограничены.</span>
         <router-link to="/verify-email" class="btn-primary">Подтвердить Email</router-link>
       </div>
 
@@ -32,14 +32,14 @@
                 />
               </div>
               <button class="avatar-edit-btn" @click="triggerAvatarUpload" title="Изменить аватар">
-                
+                <i class="fi fi-rs-camera"></i>
               </button>
             </div>
             <div class="user-info">
               <h3>{{ authStore.user?.username || 'Гость' }}</h3>
               <p class="user-email">{{ authStore.user?.email }}</p>
               <p class="user-status" :class="{ verified: authStore.user?.emailVerified }">
-                {{ authStore.user?.emailVerified ? ' Email подтвержден' : ' Email не подтвержден' }}
+                {{ authStore.user?.emailVerified ? '✓ Email подтвержден' : '✗ Email не подтвержден' }}
               </p>
               <button
                 v-if="authStore.isLoggedIn && !authStore.user?.emailVerified"
@@ -58,7 +58,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'general' }"
             >
-              <span class="nav-icon"></span>
+              <i class="fi fi-rs-user"></i>
               <span>Общая информация</span>
             </button>
             <button
@@ -66,7 +66,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'activity' }"
             >
-              <span class="nav-icon"></span>
+              <i class="fi fi-tr-blueprint"></i>
               <span>Активность</span>
             </button>
             <button
@@ -74,7 +74,7 @@
               class="nav-item"
               :class="{ active: activeTab === 'settings' }"
             >
-              <span class="nav-icon">️</span>
+              <i class="fi fi-rs-settings-sliders"></i>
               <span>Настройки</span>
             </button>
           </nav>
@@ -111,7 +111,7 @@
                 <div class="info-value">
                   {{ authStore.user?.email }}
                   <span class="email-status" :class="{ verified: authStore.user?.emailVerified }">
-                    {{ authStore.user?.emailVerified ? '' : '' }}
+                    {{ authStore.user?.emailVerified ? '✓' : '✗' }}
                   </span>
                 </div>
               </div>
@@ -132,7 +132,7 @@
 
             <!-- Прогресс чтения за последние 3 дня -->
             <div class="activity-block">
-              <h3> Прогресс чтения (последние 3 дня)</h3>
+              <h3>Прогресс чтения (последние 3 дня)</h3>
               <div v-if="recentProgress.length === 0" class="empty-activity">
                 Нет недавней активности
               </div>
@@ -152,7 +152,7 @@
 
             <!-- Закладки по статусам -->
             <div class="activity-block">
-              <h3> Закладки</h3>
+              <h3>Закладки</h3>
               <div class="bookmarks-tabs">
                 <button
                   v-for="status in bookmarkStatuses"
@@ -197,30 +197,35 @@
               <div class="settings-group">
                 <h3>Основные</h3>
                 <button @click="openEditProfileModal" class="settings-btn">
-                  <span>️</span> Редактировать профиль
+                  <i class="fi fi-rs-user"></i>
+                  <span>Редактировать профиль</span>
                 </button>
                 <button @click="triggerAvatarUpload" class="settings-btn">
-                  <span>️</span> Изменить аватар
+                  <i class="fi fi-rs-camera"></i>
+                  <span>Изменить аватар</span>
                 </button>
                 <button @click="openChangePasswordModal" class="settings-btn">
-                  <span></span> Изменить пароль
+                  <i class="fi fi-rs-lock"></i>
+                  <span>Изменить пароль</span>
                 </button>
                 <button
                   v-if="!authStore.user?.emailVerified"
                   @click="resendVerification"
                   class="settings-btn warning"
                 >
-                  <span></span> Повторно отправить письмо подтверждения
+                  <span>📧</span> Повторно отправить письмо подтверждения
                 </button>
               </div>
 
               <div class="settings-group danger">
                 <h3>Опасная зона</h3>
                 <button @click="logout" class="settings-btn">
-                  <span></span> Выйти из аккаунта
+                  <i class="fi fi-rs-sign-out-alt"></i>
+                  <span>Выйти из аккаунта</span>
                 </button>
                 <button @click="deleteAccount" class="settings-btn danger-btn">
-                  <span>️</span> Удалить аккаунт
+                  <i class="fi fi-rs-trash"></i>
+                  <span>Удалить аккаунт</span>
                 </button>
               </div>
             </div>
@@ -251,47 +256,47 @@
     </div>
 
     <!-- Модальное окно: Изменение пароля -->
-<div v-if="showChangePasswordModal" class="modal-overlay" @click.self="closeChangePasswordModal">
-  <div class="modal-content">
-    <h3>Изменение пароля</h3>
-    <form @submit.prevent="changePassword">
-      <div class="form-group">
-        <label>Текущий пароль</label>
-        <input 
-          v-model="passwordForm.currentPassword" 
-          type="password" 
-          required 
-          placeholder="Введите текущий пароль"
-        />
+    <div v-if="showChangePasswordModal" class="modal-overlay" @click.self="closeChangePasswordModal">
+      <div class="modal-content">
+        <h3>Изменение пароля</h3>
+        <form @submit.prevent="changePassword">
+          <div class="form-group">
+            <label>Текущий пароль</label>
+            <input 
+              v-model="passwordForm.currentPassword" 
+              type="password" 
+              required 
+              placeholder="Введите текущий пароль"
+            />
+          </div>
+          <div class="form-group">
+            <label>Новый пароль</label>
+            <input 
+              v-model="passwordForm.newPassword" 
+              type="password" 
+              required 
+              minlength="6"
+              placeholder="Минимум 6 символов"
+            />
+          </div>
+          <div class="form-group">
+            <label>Подтверждение нового пароля</label>
+            <input 
+              v-model="passwordForm.confirmPassword" 
+              type="password" 
+              required 
+              placeholder="Повторите новый пароль"
+            />
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="save-btn" :disabled="passwordSaving">
+              {{ passwordSaving ? 'Сохранение...' : 'Сохранить' }}
+            </button>
+            <button type="button" class="cancel-btn" @click="closeChangePasswordModal">Отмена</button>
+          </div>
+        </form>
       </div>
-      <div class="form-group">
-        <label>Новый пароль</label>
-        <input 
-          v-model="passwordForm.newPassword" 
-          type="password" 
-          required 
-          minlength="6"
-          placeholder="Минимум 6 символов"
-        />
-      </div>
-      <div class="form-group">
-        <label>Подтверждение нового пароля</label>
-        <input 
-          v-model="passwordForm.confirmPassword" 
-          type="password" 
-          required 
-          placeholder="Повторите новый пароль"
-        />
-      </div>
-      <div class="modal-actions">
-        <button type="submit" class="save-btn" :disabled="passwordSaving">
-          {{ passwordSaving ? 'Сохранение...' : 'Сохранить' }}
-        </button>
-        <button type="button" class="cancel-btn" @click="closeChangePasswordModal">Отмена</button>
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
   </div>
 </template>
 
@@ -339,7 +344,7 @@ const resending = ref(false)
 
 // Статусы закладок
 const bookmarkStatuses = [
-  { value: 'reading', label: 'Читаю' },
+  { value: 'reading', label: 'Читаю'  } ,
   { value: 'completed', label: 'Прочитано' },
   { value: 'dropped', label: 'Брошено' },
   { value: 'planned', label: 'Запланировано' },

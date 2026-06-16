@@ -5,28 +5,28 @@
         <h2>Админ-панель</h2>
         <nav>
           <button @click="activeTab = 'manga'" :class="{ active: activeTab === 'manga' }">
-            <span class="nav-icon">📚</span> Манга
+            <i class="fas fa-book nav-icon"></i> Манга
           </button>
           <button @click="activeTab = 'chapters'" :class="{ active: activeTab === 'chapters' }">
-            <span class="nav-icon">📖</span> Главы
+            <i class="fas fa-book-open nav-icon"></i> Главы
           </button>
           <button @click="activeTab = 'users'" :class="{ active: activeTab === 'users' }">
-            <span class="nav-icon">👥</span> Пользователи
+            <i class="fas fa-users nav-icon"></i> Пользователи
           </button>
           <button @click="activeTab = 'forum'" :class="{ active: activeTab === 'forum' }">
-            <span class="nav-icon">💬</span> Форум
+            <i class="fas fa-comments nav-icon"></i> Форум
           </button>
           <button @click="activeTab = 'feedback'" :class="{ active: activeTab === 'feedback' }">
-            <span class="nav-icon">📬</span> Сообщения
+            <i class="fas fa-envelope nav-icon"></i> Сообщения
           </button>
           <button @click="activeTab = 'upload'" :class="{ active: activeTab === 'upload' }">
-            <span class="nav-icon">📤</span> Загрузка главы
+            <i class="fas fa-upload nav-icon"></i> Загрузка главы
           </button>
           <button @click="activeTab = 'import'" :class="{ active: activeTab === 'import' }">
-            <span class="nav-icon">📥</span> Импорт Excel
+            <i class="fas fa-file-import nav-icon"></i> Импорт Excel
           </button>
           <button @click="activeTab = 'stats'" :class="{ active: activeTab === 'stats' }">
-            <span class="nav-icon">📊</span> Статистика
+            <i class="fas fa-chart-line nav-icon"></i> Статистика
           </button>
         </nav>
       </aside>
@@ -36,7 +36,7 @@
         <section v-if="activeTab === 'manga'">
           <div class="header-row">
             <h2>Управление мангой</h2>
-            <button @click="openMangaModal()" class="btn-primary">+ Добавить мангу</button>
+            <button @click="openMangaModal()" class="btn-primary"><i class="fas fa-plus icon-outline-sm"></i> Добавить мангу</button>
           </div>
           <div class="table-responsive">
             <table v-if="mangaList.length" class="table">
@@ -60,8 +60,8 @@
                   <td><span :class="'status-badge ' + m.status">{{ getStatusText(m.status) }}</span></td>
                   <td>{{ m.chaptersCount || m.chapters_count || 0 }}</td>
                   <td class="actions">
-                    <button @click="openMangaModal(m)" class="btn-sm edit">✏️</button>
-                    <button @click="deleteManga(m.id)" class="btn-sm delete">🗑️</button>
+                    <button @click="openMangaModal(m)" class="btn-sm edit"><i class="fas fa-edit"></i></button>
+                    <button @click="deleteManga(m.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                   </td>
                 </tr>
               </tbody>
@@ -70,11 +70,11 @@
           </div>
         </section>
 
-                        <!-- Главы -->
+        <!-- Главы -->
         <section v-if="activeTab === 'chapters'">
           <div class="header-row">
             <h2>Управление главами</h2>
-            <button @click="openChapterModal()" class="btn-primary">+ Добавить главу</button>
+            <button @click="openChapterModal()" class="btn-primary"><i class="fas fa-plus icon-outline-sm"></i> Добавить главу</button>
           </div>
           <div class="filter-row">
             <label>Фильтр по манге:</label>
@@ -103,14 +103,14 @@
                   <td><span class="chapter-number">Глава {{ ch.chapter_number }}</span></td>
                   <td>{{ ch.title || '—' }}</td>
                   <td class="pages-count">
-                    <span v-if="loadingPages[ch.id]" class="loading-small">⏳</span>
+                    <span v-if="loadingPages[ch.id]" class="loading-small"><i class="fas fa-spinner fa-spin icon-outline-sm"></i></span>
                     <span v-else-if="realPagesCount[ch.id] > 0" class="has-pages-real">{{ realPagesCount[ch.id] }}</span>
                     <span v-else class="no-pages">0</span>
                   </td>
-                  <td>👁 {{ ch.views || 0 }}</td>
+                  <td><i class="far fa-eye icon-outline-sm"></i> {{ ch.views || 0 }}</td>
                   <td class="actions">
-                    <button @click="openChapterModal(ch)" class="btn-sm edit">✏️</button>
-                    <button @click="deleteChapter(ch.id)" class="btn-sm delete">🗑️</button>
+                    <button @click="openChapterModal(ch)" class="btn-sm edit"><i class="fas fa-edit"></i></button>
+                    <button @click="deleteChapter(ch.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                   </td>
                 </tr>
               </tbody>
@@ -147,7 +147,7 @@
                   </td>
                   <td>{{ formatDate(u.created_at) }}</td>
                   <td class="actions">
-                    <button v-if="u.id !== authStore.user?.id" @click="deleteUser(u.id)" class="btn-sm delete">🗑️</button>
+                    <button v-if="u.id !== authStore.user?.id" @click="deleteUser(u.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                   </td>
                 </tr>
               </tbody>
@@ -161,17 +161,17 @@
           <h2>Управление форумом</h2>
           
           <div class="forum-admin-tabs">
-            <button @click="switchForumTab('categories')" :class="{ active: forumSubtab === 'categories' }" class="forum-tab-btn">Категории</button>
-            <button @click="switchForumTab('topics')" :class="{ active: forumSubtab === 'topics' }" class="forum-tab-btn">Темы</button>
-            <button @click="switchForumTab('posts')" :class="{ active: forumSubtab === 'posts' }" class="forum-tab-btn">Посты</button>
-            <button @click="switchForumTab('reviews')" :class="{ active: forumSubtab === 'reviews' }" class="forum-tab-btn">Рецензии</button>
+            <button @click="switchForumTab('categories')" :class="{ active: forumSubtab === 'categories' }" class="forum-tab-btn"><i class="fas fa-folder icon-outline-sm"></i> Категории</button>
+            <button @click="switchForumTab('topics')" :class="{ active: forumSubtab === 'topics' }" class="forum-tab-btn"><i class="fas fa-list icon-outline-sm"></i> Темы</button>
+            <button @click="switchForumTab('posts')" :class="{ active: forumSubtab === 'posts' }" class="forum-tab-btn"><i class="fas fa-comment icon-outline-sm"></i> Посты</button>
+            <button @click="switchForumTab('reviews')" :class="{ active: forumSubtab === 'reviews' }" class="forum-tab-btn"><i class="fas fa-star icon-outline-sm"></i> Рецензии</button>
           </div>
 
           <!-- Категории -->
           <div v-if="forumSubtab === 'categories'" class="forum-admin-section">
             <div class="section-header">
               <h3>Категории форума</h3>
-              <button @click="openCategoryModal()" class="btn-primary">+ Добавить категорию</button>
+              <button @click="openCategoryModal()" class="btn-primary"><i class="fas fa-plus icon-outline-sm"></i> Добавить категорию</button>
             </div>
             <div class="table-responsive">
               <table class="admin-table">
@@ -193,8 +193,8 @@
                     <td>{{ cat.description || '—' }}</td>
                     <td>{{ cat.order || 0 }}</td>
                     <td class="actions">
-                      <button @click="openCategoryModal(cat)" class="btn-sm edit">✏️</button>
-                      <button @click="deleteCategoryItem(cat.id)" class="btn-sm delete">🗑️</button>
+                      <button @click="openCategoryModal(cat)" class="btn-sm edit"><i class="fas fa-edit"></i></button>
+                      <button @click="deleteCategoryItem(cat.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -207,11 +207,11 @@
             </div>
           </div>
 
-           <!-- Темы -->
+          <!-- Темы -->
           <div v-if="forumSubtab === 'topics'" class="forum-admin-section">
             <div class="section-header">
               <h3>Темы форума</h3>
-              <button @click="openTopicModal()" class="btn-primary">+ Создать тему</button>
+              <button @click="openTopicModal()" class="btn-primary"><i class="fas fa-plus icon-outline-sm"></i> Создать тему</button>
             </div>
             <div class="table-responsive">
               <table class="admin-table">
@@ -237,8 +237,8 @@
                     <td>{{ topic.views || 0 }}</td>
                     <td>{{ formatDate(topic.created_at) }}</td>
                     <td class="actions">
-                      <button @click="openTopicModal(topic)" class="btn-sm edit">✏️</button>
-                      <button @click="deleteTopicItem(topic.id)" class="btn-sm delete">🗑️</button>
+                      <button @click="openTopicModal(topic)" class="btn-sm edit"><i class="fas fa-edit"></i></button>
+                      <button @click="deleteTopicItem(topic.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -251,7 +251,7 @@
             </div>
           </div>
 
-                   <!-- Посты -->
+          <!-- Посты -->
           <div v-if="forumSubtab === 'posts'" class="forum-admin-section">
             <div class="section-header">
               <h3>Посты форума</h3>
@@ -276,7 +276,7 @@
                     <td>{{ getTopicTitleById(post.topicId) }}</td>
                     <td>{{ formatDate(post.created_at) }}</td>
                     <td class="actions">
-                      <button @click="deletePostItem(post.id)" class="btn-sm delete">🗑️</button>
+                      <button @click="deletePostItem(post.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -312,15 +312,15 @@
                     <td>{{ review.id }}</td>
                     <td><strong>{{ review.mangaTitle }}</strong></td>
                     <td>{{ review.userName }}</td>
-                    <td><span class="review-rating">⭐ {{ review.rating }}</span></td>
+                    <td><span class="review-rating"><i class="fas fa-star icon-outline-sm" style="color: #ffcc00; -webkit-text-stroke: 1px #ffcc00;"></i> {{ review.rating }}</span></td>
                     <td class="review-content">
                       <span class="review-preview">{{ truncate(review.content, 50) }}</span>
-                      <button @click="openReviewDetailModal(review)" class="btn-sm view" title="Просмотреть полностью">👁️</button>
+                      <button @click="openReviewDetailModal(review)" class="btn-sm view" title="Просмотреть полностью"><i class="fas fa-eye"></i></button>
                     </td>
                     <td>{{ formatDate(review.createdAt) }}</td>
                     <td class="actions">
-                      <button @click="approveReview(review.id)" class="btn-sm approve" title="Одобрить">✅</button>
-                      <button @click="rejectReview(review.id)" class="btn-sm reject" title="Отклонить">❌</button>
+                      <button @click="approveReview(review.id)" class="btn-sm approve" title="Одобрить"><i class="fas fa-check"></i></button>
+                      <button @click="rejectReview(review.id)" class="btn-sm reject" title="Отклонить"><i class="fas fa-times"></i></button>
                     </td>
                   </tr>
                 </tbody>
@@ -350,8 +350,8 @@
                   <td>{{ truncate(fb.message, 50) }}</td>
                   <td><span :class="'status-badge ' + fb.status">{{ getFeedbackStatus(fb.status) }}</span></td>
                   <td class="actions">
-                    <button @click="openFeedbackReply(fb)" class="btn-sm">✉️</button>
-                    <button @click="deleteFeedback(fb.id)" class="btn-sm delete">🗑️</button>
+                    <button @click="openFeedbackReply(fb)" class="btn-sm"><i class="fas fa-reply"></i></button>
+                    <button @click="deleteFeedback(fb.id)" class="btn-sm delete"><i class="fas fa-trash"></i></button>
                   </td>
                 </tr>
               </tbody>
@@ -362,44 +362,44 @@
 
         <!-- Загрузка главы ZIP -->
         <section v-if="activeTab === 'upload'">
-          <h2>📤 Загрузка главы из ZIP архива</h2>
+          <h2><i class="fas fa-upload icon-outline-sm"></i> Загрузка главы из ZIP архива</h2>
           <div class="upload-form">
             <div class="form-group"><label>Манга *</label><select v-model="uploadForm.mangaId" class="form-select"><option value="">Выберите мангу</option><option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option></select></div>
             <div class="form-row"><div class="form-group"><label>Номер главы *</label><input type="number" v-model.number="uploadForm.chapterNumber" class="form-input" placeholder="например: 1" /></div><div class="form-group"><label>Название главы</label><input type="text" v-model="uploadForm.title" class="form-input" placeholder="Глава 1" /></div></div>
-            <div class="form-group"><label>ZIP архив с изображениями *</label><div class="file-upload-area"><input type="file" ref="zipFileInput" accept=".zip" @change="handleZipFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.zipFileInput.click()" class="btn-file">📁 Выбрать ZIP файл</button><span v-if="selectedFileName" class="file-name">{{ selectedFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint">📌 Поддерживаются файлы .zip с изображениями PNG, JPG, WEBP.</p></div>
-            <button @click="uploadChapterZip" :disabled="uploadForm.submitting || !canUpload" class="btn-primary">{{ uploadForm.submitting ? '⏳ Загрузка...' : '📤 Загрузить главу' }}</button>
+            <div class="form-group"><label>ZIP архив с изображениями *</label><div class="file-upload-area"><input type="file" ref="zipFileInput" accept=".zip" @change="handleZipFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.zipFileInput.click()" class="btn-file"><i class="fas fa-folder-open icon-outline-sm"></i> Выбрать ZIP файл</button><span v-if="selectedFileName" class="file-name">{{ selectedFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint"><i class="fas fa-info-circle icon-outline-sm"></i> Поддерживаются файлы .zip с изображениями PNG, JPG, WEBP.</p></div>
+            <button @click="uploadChapterZip" :disabled="uploadForm.submitting || !canUpload" class="btn-primary"><i class="fas fa-upload icon-outline-sm"></i> {{ uploadForm.submitting ? 'Загрузка...' : 'Загрузить главу' }}</button>
             <p v-if="uploadForm.result" class="result-msg" :class="{ error: uploadForm.result.includes('Ошибка') }">{{ uploadForm.result }}</p>
           </div>
         </section>
 
         <!-- Импорт Excel -->
         <section v-if="activeTab === 'import'">
-          <h2>📥 Импорт манги из Excel</h2>
+          <h2><i class="fas fa-file-import icon-outline-sm"></i> Импорт манги из Excel</h2>
           <div class="upload-form">
-            <div class="form-group"><label>Файл Excel (.xlsx)</label><div class="file-upload-area"><input type="file" ref="excelFileInput" accept=".xlsx,.xls" @change="handleExcelFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.excelFileInput.click()" class="btn-file">📁 Выбрать Excel файл</button><span v-if="excelFileName" class="file-name">{{ excelFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint">📌 Поддерживаются файлы .xlsx, .xls.</p></div>
-            <button @click="importMangaFromExcel" :disabled="importing || !excelFileName" class="btn-primary">{{ importing ? '⏳ Импорт...' : '📥 Импортировать' }}</button>
+            <div class="form-group"><label>Файл Excel (.xlsx)</label><div class="file-upload-area"><input type="file" ref="excelFileInput" accept=".xlsx,.xls" @change="handleExcelFileSelect" class="file-input-hidden" /><button type="button" @click="$refs.excelFileInput.click()" class="btn-file"><i class="fas fa-folder-open icon-outline-sm"></i> Выбрать Excel файл</button><span v-if="excelFileName" class="file-name">{{ excelFileName }}</span><span v-else class="file-name file-name-empty">Файл не выбран</span></div><p class="hint"><i class="fas fa-info-circle icon-outline-sm"></i> Поддерживаются файлы .xlsx, .xls.</p></div>
+            <button @click="importMangaFromExcel" :disabled="importing || !excelFileName" class="btn-primary"><i class="fas fa-file-import icon-outline-sm"></i> {{ importing ? 'Импорт...' : 'Импортировать' }}</button>
             <p v-if="importMessage" class="result-msg" :class="{ error: importMessage.includes('Ошибка') }">{{ importMessage }}</p>
           </div>
         </section>
 
         <!-- Статистика -->
         <section v-if="activeTab === 'stats'">
-          <h2>📊 Статистика сайта</h2>
+          <h2><i class="fas fa-chart-line icon-outline-sm"></i> Статистика сайта</h2>
           <div class="stats-grid">
-            <div class="stat-card"><span>👥 Пользователей</span><strong>{{ stats.users || 0 }}</strong></div>
-            <div class="stat-card"><span>📚 Манги</span><strong>{{ stats.manga || 0 }}</strong></div>
-            <div class="stat-card"><span>👁 Просмотров</span><strong>{{ (stats.totalViews || 0).toLocaleString() }}</strong></div>
+            <div class="stat-card"><span><i class="fas fa-users icon-outline-sm"></i> Пользователей</span><strong>{{ stats.users || 0 }}</strong></div>
+            <div class="stat-card"><span><i class="fas fa-book icon-outline-sm"></i> Манги</span><strong>{{ stats.manga || 0 }}</strong></div>
+            <div class="stat-card"><span><i class="fas fa-eye icon-outline-sm"></i> Просмотров</span><strong>{{ (stats.totalViews || 0).toLocaleString() }}</strong></div>
           </div>
           <div class="sync-section">
-            <h3>🔄 Синхронизация</h3>
+            <h3><i class="fas fa-sync icon-outline-sm"></i> Синхронизация</h3>
             <div class="sync-buttons">
-              <button @click="syncPages" :disabled="syncing" class="btn-primary">{{ syncing ? '⏳ Синхронизация...' : '📄 Синхронизировать страницы' }}</button>
-              <button @click="syncFull" :disabled="syncingFull" class="btn-primary">{{ syncingFull ? '⏳ Полная синхронизация...' : '🔄 Полная синхронизация' }}</button>
+              <button @click="syncPages" :disabled="syncing" class="btn-primary"><i class="fas fa-file-alt icon-outline-sm"></i> {{ syncing ? 'Синхронизация...' : 'Синхронизировать страницы' }}</button>
+              <button @click="syncFull" :disabled="syncingFull" class="btn-primary"><i class="fas fa-sync-alt icon-outline-sm"></i> {{ syncingFull ? 'Полная синхронизация...' : 'Полная синхронизация' }}</button>
             </div>
             <div v-if="syncResult" class="sync-result" :class="{ success: syncResult.success, error: !syncResult.success }">
               <p>{{ syncResult.message }}</p>
-              <p v-if="syncResult.updatedChapters !== undefined">📊 Обновлено глав: {{ syncResult.updatedChapters }}</p>
-              <p v-if="syncResult.totalPagesCreated !== undefined">📄 Создано страниц: {{ syncResult.totalPagesCreated }}</p>
+              <p v-if="syncResult.updatedChapters !== undefined"><i class="fas fa-book icon-outline-sm"></i> Обновлено глав: {{ syncResult.updatedChapters }}</p>
+              <p v-if="syncResult.totalPagesCreated !== undefined"><i class="fas fa-file icon-outline-sm"></i> Создано страниц: {{ syncResult.totalPagesCreated }}</p>
             </div>
           </div>
         </section>
@@ -409,7 +409,7 @@
     <!-- Модальные окна -->
     <div v-if="showMangaModal" class="modal-overlay" @click.self="closeMangaModal">
       <div class="modal-card">
-        <h3>{{ editingManga ? '✏️ Редактировать мангу' : '➕ Добавить мангу' }}</h3>
+        <h3><i class="fas fa-edit icon-outline-sm" style="color: var(--color-primary, #07660c); -webkit-text-stroke: 1.5px var(--color-primary, #07660c);"></i> {{ editingManga ? 'Редактировать мангу' : 'Добавить мангу' }}</h3>
         <form @submit.prevent="saveManga" class="manga-form">
           <div class="form-group"><label>Название *</label><input v-model="mangaForm.title" type="text" required class="form-input" /></div>
           <div class="form-group"><label>Альтернативные названия</label><input v-model="mangaForm.alternative_titles_str" placeholder="Название1, Название2" class="form-input" /></div>
@@ -417,33 +417,33 @@
           <div class="form-group">
             <label>Обложка</label>
             <div class="cover-upload">
-              <div v-if="mangaForm.cover_image" class="cover-preview"><img :src="getCoverUrl(mangaForm.cover_image)" alt="Обложка" /><button type="button" @click="mangaForm.cover_image = ''" class="remove-cover">✕</button></div>
-              <div class="cover-upload-area"><input type="file" ref="coverInput" accept="image/*" @change="uploadCover" class="file-input-hidden" /><button type="button" @click="$refs.coverInput.click()" class="btn-file">🖼️ Выбрать изображение</button><span class="hint">PNG, JPG до 5MB</span></div>
+              <div v-if="mangaForm.cover_image" class="cover-preview"><img :src="getCoverUrl(mangaForm.cover_image)" alt="Обложка" /><button type="button" @click="mangaForm.cover_image = ''" class="remove-cover"><i class="fas fa-times"></i></button></div>
+              <div class="cover-upload-area"><input type="file" ref="coverInput" accept="image/*" @change="uploadCover" class="file-input-hidden" /><button type="button" @click="$refs.coverInput.click()" class="btn-file"><i class="fas fa-image icon-outline-sm"></i> Выбрать изображение</button><span class="hint">PNG, JPG до 5MB</span></div>
             </div>
           </div>
           <div class="form-row"><div class="form-group"><label>Автор</label><input v-model="mangaForm.author" class="form-input" /></div><div class="form-group"><label>Художник</label><input v-model="mangaForm.artist" class="form-input" /></div></div>
           <div class="form-row"><div class="form-group"><label>Статус</label><select v-model="mangaForm.status" class="form-select"><option value="ongoing">Онгоинг</option><option value="completed">Завершена</option><option value="hiatus">Перерыв</option><option value="cancelled">Отменена</option></select></div><div class="form-group"><label>Год</label><input type="number" v-model.number="mangaForm.year" class="form-input" /></div></div>
           <div class="form-group"><label>Жанры (через запятую)</label><input v-model="mangaForm.genres_str" placeholder="Экшен, Фэнтези, Комедия" class="form-input" /></div>
-          <div class="modal-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="button" @click="closeMangaModal" class="btn-secondary">Отмена</button></div>
+          <div class="modal-actions"><button type="submit" class="btn-primary"><i class="fas fa-save icon-outline-sm"></i> Сохранить</button><button type="button" @click="closeMangaModal" class="btn-secondary">Отмена</button></div>
         </form>
       </div>
     </div>
 
     <div v-if="showChapterModal" class="modal-overlay" @click.self="closeChapterModal">
       <div class="modal-card">
-        <h3>{{ editingChapter ? '✏️ Редактировать главу' : '➕ Добавить главу' }}</h3>
+        <h3><i class="fas fa-edit icon-outline-sm" style="color: var(--color-primary, #07660c); -webkit-text-stroke: 1.5px var(--color-primary, #07660c);"></i> {{ editingChapter ? 'Редактировать главу' : 'Добавить главу' }}</h3>
         <form @submit.prevent="saveChapter">
           <div class="form-group"><label>Манга *</label><select v-model="chapterForm.manga_id" class="form-select" required><option value="">Выберите мангу</option><option v-for="m in mangaList" :key="m.id" :value="m.id">{{ m.title }}</option></select></div>
           <div class="form-row"><div class="form-group"><label>Номер главы *</label><input type="number" v-model.number="chapterForm.chapter_number" class="form-input" required placeholder="например: 1" /></div><div class="form-group"><label>Название главы</label><input v-model="chapterForm.title" class="form-input" placeholder="Глава 1 - Название" /></div></div>
-          <div class="modal-actions"><button type="submit" class="btn-primary">💾 Сохранить</button><button type="button" @click="closeChapterModal" class="btn-secondary">Отмена</button></div>
+          <div class="modal-actions"><button type="submit" class="btn-primary"><i class="fas fa-save icon-outline-sm"></i> Сохранить</button><button type="button" @click="closeChapterModal" class="btn-secondary">Отмена</button></div>
         </form>
       </div>
     </div>
 
-        <!-- Модальное окно для категории (исправленное) -->
+    <!-- Модальное окно для категории -->
     <div v-if="showCategoryModal" class="modal-overlay" @click.self="closeCategoryModal">
       <div class="modal-card">
-        <h3>{{ editingCategory ? 'Редактировать категорию' : 'Добавить категорию' }}</h3>
+        <h3><i class="fas fa-folder icon-outline-sm" style="color: var(--color-primary, #07660c); -webkit-text-stroke: 1.5px var(--color-primary, #07660c);"></i> {{ editingCategory ? 'Редактировать категорию' : 'Добавить категорию' }}</h3>
         <form @submit.prevent="saveCategory">
           <div class="form-group">
             <label>Название *</label>
@@ -460,24 +460,24 @@
           </div>
           <div class="form-group">
             <label>Иконка</label>
-            <input v-model="categoryForm.icon" type="text" class="form-input" placeholder="📚" />
+            <input v-model="categoryForm.icon" type="text" class="form-input" placeholder="fas fa-folder" />
           </div>
           <div class="form-group">
             <label>Порядок</label>
             <input v-model.number="categoryForm.order" type="number" class="form-input" />
           </div>
           <div class="modal-actions">
-            <button type="submit" class="btn-primary">Сохранить</button>
+            <button type="submit" class="btn-primary"><i class="fas fa-save icon-outline-sm"></i> Сохранить</button>
             <button type="button" @click="closeCategoryModal" class="btn-secondary">Отмена</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Модальное окно для темы (исправленное) -->
+    <!-- Модальное окно для темы -->
     <div v-if="showTopicModal" class="modal-overlay" @click.self="closeTopicModal">
       <div class="modal-card wide">
-        <h3>{{ editingTopic ? 'Редактировать тему' : 'Создать тему' }}</h3>
+        <h3><i class="fas fa-list icon-outline-sm" style="color: var(--color-primary, #07660c); -webkit-text-stroke: 1.5px var(--color-primary, #07660c);"></i> {{ editingTopic ? 'Редактировать тему' : 'Создать тему' }}</h3>
         <form @submit.prevent="saveTopic">
           <div class="form-group">
             <label>Категория *</label>
@@ -495,7 +495,7 @@
             <textarea v-model="topicForm.content" rows="6" required class="form-textarea"></textarea>
           </div>
           <div class="modal-actions">
-            <button type="submit" class="btn-primary">Сохранить</button>
+            <button type="submit" class="btn-primary"><i class="fas fa-save icon-outline-sm"></i> Сохранить</button>
             <button type="button" @click="closeTopicModal" class="btn-secondary">Отмена</button>
           </div>
         </form>
@@ -506,17 +506,17 @@
     <div v-if="showReviewDetailModal" class="modal-overlay" @click.self="closeReviewDetailModal">
       <div class="modal-content wide">
         <div class="modal-header">
-          <h3>Рецензия на "{{ selectedReview?.mangaTitle }}"</h3>
+          <h3><i class="fas fa-star icon-outline-sm" style="color: #ffcc00; -webkit-text-stroke: 1.5px #ffcc00;"></i> Рецензия на "{{ selectedReview?.mangaTitle }}"</h3>
           <button @click="closeReviewDetailModal" class="close-modal">&times;</button>
         </div>
         <div class="review-detail">
           <div class="review-detail-header">
             <div class="review-detail-author">
-              <span class="author-name">{{ selectedReview?.userName }}</span>
-              <span class="review-date">{{ formatDate(selectedReview?.createdAt) }}</span>
+              <span class="author-name"><i class="fas fa-user icon-outline-sm"></i> {{ selectedReview?.userName }}</span>
+              <span class="review-date"><i class="far fa-calendar-alt icon-outline-sm"></i> {{ formatDate(selectedReview?.createdAt) }}</span>
             </div>
             <div class="review-detail-rating">
-              <span v-for="i in 10" :key="i" class="star-detail" :class="{ active: i <= (selectedReview?.rating || 0) }">★</span>
+              <span v-for="i in 10" :key="i" class="star-detail" :class="{ active: i <= (selectedReview?.rating || 0) }"><i class="fas fa-star"></i></span>
               <span class="rating-number">{{ selectedReview?.rating }}/10</span>
             </div>
           </div>
@@ -524,8 +524,8 @@
             <p>{{ selectedReview?.content }}</p>
           </div>
           <div class="review-detail-actions">
-            <button @click="approveReview(selectedReview?.id)" class="btn-sm approve">✅ Одобрить</button>
-            <button @click="rejectReview(selectedReview?.id)" class="btn-sm reject">❌ Отклонить</button>
+            <button @click="approveReview(selectedReview?.id)" class="btn-sm approve"><i class="fas fa-check icon-outline-sm"></i> Одобрить</button>
+            <button @click="rejectReview(selectedReview?.id)" class="btn-sm reject"><i class="fas fa-times icon-outline-sm"></i> Отклонить</button>
           </div>
         </div>
       </div>
@@ -533,10 +533,10 @@
 
     <div v-if="showReplyModal" class="modal-overlay" @click.self="closeReplyModal">
       <div class="modal-card">
-        <h3>📧 Ответ пользователю {{ replyFeedback?.email }}</h3>
+        <h3><i class="fas fa-reply icon-outline-sm" style="color: var(--color-primary, #07660c); -webkit-text-stroke: 1.5px var(--color-primary, #07660c);"></i> Ответ пользователю {{ replyFeedback?.email }}</h3>
         <div class="original-message"><strong>Сообщение:</strong><p>{{ replyFeedback?.message }}</p></div>
         <div class="form-group"><label>Текст ответа *</label><textarea v-model="replyText" placeholder="Введите ваш ответ..." rows="5" class="form-textarea"></textarea></div>
-        <div class="modal-actions"><button @click="sendReply" :disabled="!replyText.trim() || replySending" class="btn-primary">{{ replySending ? '⏳ Отправка...' : '✉️ Отправить ответ' }}</button><button @click="closeReplyModal" class="btn-secondary">Отмена</button></div>
+        <div class="modal-actions"><button @click="sendReply" :disabled="!replyText.trim() || replySending" class="btn-primary"><i class="fas fa-paper-plane icon-outline-sm"></i> {{ replySending ? 'Отправка...' : 'Отправить ответ' }}</button><button @click="closeReplyModal" class="btn-secondary">Отмена</button></div>
       </div>
     </div>
   </div>
@@ -1032,7 +1032,6 @@ onUnmounted(() => {
 .sidebar button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 15px; background: transparent; border: none; color: var(--color-text, #ffffff); border-radius: 8px; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; text-align: left; }
 .sidebar button:hover { background: rgba(128, 131, 42, 0.2); }
 .sidebar button.active { background: var(--color-primary, #07660c); color: white; }
-.nav-icon { font-size: 1.2rem; }
 .content { background: var(--color-panel, #1a1a1a); border-radius: 12px; padding: 25px; border: 1px solid rgba(128, 131, 42, 0.2); }
 .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
 .content h2 { color: var(--color-primary, #07660c); margin: 0 0 20px 0; }
@@ -1048,15 +1047,15 @@ onUnmounted(() => {
 .chapter-number { font-weight: 600; color: var(--color-primary); }
 .pages-count .has-pages { color: #00cc44; font-weight: 600; }
 .actions { white-space: nowrap; }
-.btn-primary { background: var(--color-primary, #07660c); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+.btn-primary { background: var(--color-primary, #07660c); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
 .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover, #0a8a10); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary { background: transparent; border: 1px solid var(--color-secondary, #9ea344); color: var(--color-secondary); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
 .btn-secondary:hover { background: var(--color-secondary); color: white; }
 .btn-file { background: rgba(128, 131, 42, 0.2); border: 1px solid var(--color-secondary); color: var(--color-secondary); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
 .btn-file:hover { background: var(--color-secondary); color: white; }
-.btn-sm { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 6px; cursor: pointer; margin-right: 5px; transition: all 0.2s; }
-.btn-sm:hover { background: var(--color-primary); }
+.btn-sm { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 6px; cursor: pointer; margin-right: 5px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+.btn-sm:hover { background: var(--color-primary); color: white; }
 .btn-sm.edit:hover { background: var(--color-primary); color: white; }
 .btn-sm.delete:hover { background: #dc3545; color: white; }
 .btn-sm.approve { color: #00cc44; }
@@ -1125,14 +1124,14 @@ onUnmounted(() => {
 
 /* Стили для админ-панели форума */
 .forum-admin-tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid rgba(128, 131, 42, 0.3); padding-bottom: 10px; flex-wrap: wrap; }
-.forum-tab-btn { background: transparent; border: none; padding: 8px 20px; font-size: 0.95rem; cursor: pointer; color: var(--color-text-muted, #aaa); border-radius: 20px; transition: all 0.2s; }
+.forum-tab-btn { background: transparent; border: none; padding: 8px 20px; font-size: 0.95rem; cursor: pointer; color: var(--color-text-muted, #aaa); border-radius: 20px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
 .forum-tab-btn:hover { background: rgba(128, 131, 42, 0.2); color: var(--color-secondary, #9ea344); }
 .forum-tab-btn.active { background: var(--color-primary, #07660c); color: white; }
 .forum-admin-section { background: var(--color-panel, #1a1a1a); border-radius: 12px; padding: 20px; border: 1px solid rgba(128, 131, 42, 0.2); margin-top: 5px; }
 
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
 .section-header h3 { font-size: 1.2rem; color: var(--color-secondary, #9ea344); margin: 0; font-weight: 600; }
-.section-header .btn-primary { background: var(--color-primary, #07660c); color: white; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; }
+.section-header .btn-primary { background: var(--color-primary, #07660c); color: white; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .section-header .btn-primary:hover { background: var(--color-primary-hover, #0a8a10); transform: translateY(-1px); }
 
 .admin-table { width: 100%; border-collapse: collapse; }
@@ -1165,8 +1164,8 @@ onUnmounted(() => {
 
 .review-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .review-detail-author { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-.review-detail-author .author-name { font-weight: 600; color: #07660c; font-size: 1rem; }
-.review-detail-author .review-date { font-size: 0.75rem; color: #aaa; }
+.review-detail-author .author-name { font-weight: 600; color: #07660c; font-size: 1rem; display: inline-flex; align-items: center; gap: 6px; }
+.review-detail-author .review-date { font-size: 0.75rem; color: #aaa; display: inline-flex; align-items: center; gap: 4px; }
 .review-detail-rating { display: flex; align-items: center; gap: 8px; }
 .star-detail { font-size: 1rem; color: #444; }
 .star-detail.active { color: #ffcc00; }
@@ -1205,5 +1204,166 @@ onUnmounted(() => {
   margin-top: 5px;
   font-size: 0.7rem;
   color: var(--color-text-muted, #aaa);
+}
+
+/* ===== СТИЛИ ДЛЯ ИКОНОК С ОБВОДКОЙ ===== */
+
+/* Базовый стиль для всех иконок с обводкой */
+.icon-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #ffffff;
+  text-stroke: 1.5px #ffffff;
+  font-size: 1.2rem;
+}
+
+/* Маленькие иконки */
+.icon-outline-sm {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #ffffff;
+  text-stroke: 1.2px #ffffff;
+  font-size: 0.9rem;
+}
+
+/* Иконки в сайдбаре */
+.nav-icon {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #ffffff;
+  text-stroke: 1.5px #ffffff;
+  font-size: 1.3rem;
+  width: 1.8rem;
+  text-align: center;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+/* Активная иконка в сайдбаре - белая заливка */
+.sidebar button.active .nav-icon {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* При наведении на кнопку в сайдбаре */
+.sidebar button:hover .nav-icon {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* Иконки в кнопках таблиц */
+.table .btn-sm i,
+.admin-table .btn-sm i {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #ffffff;
+  text-stroke: 1.2px #ffffff;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+/* При наведении на кнопки в таблицах */
+.table .btn-sm:hover i,
+.admin-table .btn-sm:hover i {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* Иконки в главных кнопках (btn-primary) */
+.btn-primary i,
+.btn-file i {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #ffffff;
+  text-stroke: 1.2px #ffffff;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover i,
+.btn-file:hover i {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* Заголовки в модальных окнах */
+.modal-card h3 i,
+.modal-header h3 i {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-primary, #07660c);
+  text-stroke: 1.5px var(--color-primary, #07660c);
+  margin-right: 8px;
+}
+
+/* Звездочки рейтинга */
+.star-detail {
+  color: transparent;
+  -webkit-text-stroke: 1px #ffcc00;
+  text-stroke: 1px #ffcc00;
+  font-size: 1.2rem;
+}
+.star-detail.active {
+  color: #ffcc00;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* Иконки в статистике */
+.stat-card i {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-primary, #07660c);
+  text-stroke: 1.5px var(--color-primary, #07660c);
+  font-size: 1.3rem;
+}
+
+/* Иконки в результатах синхронизации */
+.sync-result i {
+  color: transparent;
+  -webkit-text-stroke: 1.2px currentColor;
+  text-stroke: 1.2px currentColor;
+}
+.sync-result.success i {
+  color: #00cc44;
+  -webkit-text-stroke-color: #00cc44;
+}
+.sync-result.error i {
+  color: #ff6b6b;
+  -webkit-text-stroke-color: #ff6b6b;
+}
+
+/* Иконка спиннера загрузки */
+.fa-spinner {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+/* Иконка глаза (просмотры) */
+.fa-eye {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #ffffff;
+  text-stroke: 1.2px #ffffff;
+}
+
+/* Кнопки Approve/Reject */
+.btn-sm.approve i {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #00cc44;
+  text-stroke: 1.2px #00cc44;
+}
+.btn-sm.approve:hover i {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
+}
+
+.btn-sm.reject i {
+  color: transparent;
+  -webkit-text-stroke: 1.2px #ff4444;
+  text-stroke: 1.2px #ff4444;
+}
+.btn-sm.reject:hover i {
+  color: #ffffff;
+  -webkit-text-stroke: 0px;
+  text-stroke: 0px;
 }
 </style>

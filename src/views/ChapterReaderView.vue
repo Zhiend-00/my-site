@@ -16,16 +16,16 @@
           {{ readingMode === 'webtoon' ? ' Веб-тун' : ' Постранично' }}
         </button>
         <button @click="toggleBookmark" class="action-btn" :class="{ active: isBookmarked }" title="Закладка">
-          
+          <i class="fi fi-rs-bookmark"></i>
         </button>
         <button @click="saveProgress" class="action-btn" title="Сохранить прогресс">
-          
+          <i class="fi fi-rs-canned-food"></i>
         </button>
         <button @click="toggleFullscreen" class="action-btn" title="Полноэкранный режим">
-          ️
+          <i class="fi fi-rs-expand"></i>
         </button>
         <button @click="showSettings = !showSettings" class="action-btn" :class="{ active: showSettings }" title="Настройки">
-          ️
+          <i class="fi fi-rs-settings-sliders"></i>
         </button>
       </div>
     </div>
@@ -106,13 +106,13 @@
       
       <div class="webtoon-floating-buttons">
         <button @click="scrollToTop" class="float-btn" title="Вверх">⬆</button>
-        <button @click="saveCurrentPosition" class="float-btn" title="Сохранить позицию"></button>
+        <button @click="saveCurrentPosition" class="float-btn" title="Сохранить позицию">📍</button>
         <button v-if="nextChapter" @click="goToNextChapter" class="float-btn next" title="Следующая глава">▶</button>
       </div>
       
       <div class="webtoon-bottom-bar">
         <div class="bottom-info">
-          <span> Страница {{ getCurrentWebtoonPage }} из {{ pages.length }}</span>
+          <span>📄 Страница {{ getCurrentWebtoonPage }} из {{ pages.length }}</span>
           <div class="bottom-nav" v-if="nextChapter || prevChapter">
             <button v-if="prevChapter" @click="goToPrevChapter" class="bottom-nav-btn">◀ Предыдущая глава</button>
             <button v-if="nextChapter" @click="goToNextChapter" class="bottom-nav-btn next">Следующая глава ▶</button>
@@ -131,7 +131,7 @@
 
   <div v-else class="error-state">
     <div class="error-content">
-      <h2> Ошибка загрузки</h2>
+      <h2>❌ Ошибка загрузки</h2>
       <p>{{ error }}</p>
       <button @click="goBack" class="back-btn">← Вернуться назад</button>
     </div>
@@ -212,7 +212,7 @@ const goBack = () => router.back();
 const handleImageError = (e) => {
   console.error('Ошибка загрузки изображения:', e.target.src);
   e.target.style.display = 'none';
-  e.target.insertAdjacentHTML('afterend', '<div class="image-error"> Не удалось загрузить изображение</div>');
+  e.target.insertAdjacentHTML('afterend', '<div class="image-error">❌ Не удалось загрузить изображение</div>');
 };
 
 const onPageLoad = () => { 

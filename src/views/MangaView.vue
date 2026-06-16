@@ -58,19 +58,23 @@
                 <div v-if="showStatusDropdown" class="status-dropdown">
                   <div class="status-dropdown-list">
                     <button @click="setStatus('reading')" class="status-dropdown-item" :class="{ active: currentStatus === 'reading' }">
-                      <span class="status-icon">📖</span>
+                      <span class="status-icon"></span>
+                      <i class="fi fi-ts-book-arrow-right"></i>
                       <span>Читаю</span>
                     </button>
                     <button @click="setStatus('completed')" class="status-dropdown-item" :class="{ active: currentStatus === 'completed' }">
-                      <span class="status-icon">✅</span>
+                      <span class="status-icon"></span>
+                      <i class="fi fi-rs-check-circle"></i>
                       <span>Прочитано</span>
                     </button>
                     <button @click="setStatus('planned')" class="status-dropdown-item" :class="{ active: currentStatus === 'planned' }">
-                      <span class="status-icon">📌</span>
+                      <span class="status-icon"></span>
+                      <i class="fi fi-tr-blueprint"></i>
                       <span>Запланировано</span>
                     </button>
                     <button @click="setStatus('dropped')" class="status-dropdown-item" :class="{ active: currentStatus === 'dropped' }">
-                      <span class="status-icon">❌</span>
+                      <span class="status-icon"></span>
+                      <i class="fi fi-ts-person-dragging-bag"></i>
                       <span>Брошено</span>
                     </button>
                   </div>
